@@ -1,0 +1,268 @@
+{
+  "schema_version": "1",
+  "graph_id": "social_security",
+  "graph_version": 1,
+  "data_scope": "DEMO",
+  "entry_node_id": "social_security_entry",
+  "nodes": [
+    {
+      "node_id": "social_security_entry",
+      "node_type": "ENTRY",
+      "design_basis": "SYSTEM_DESIGNED",
+      "slot_name": null,
+      "allowed_values": null,
+      "question_text": null,
+      "candidate_business_id": null,
+      "unsupported_reason": null,
+      "source_condition_refs": null
+    },
+    {
+      "node_id": "social_security_action",
+      "node_type": "SLOT_GATE",
+      "design_basis": "SYSTEM_DESIGNED",
+      "slot_name": "service_action",
+      "allowed_values": [
+        "payment",
+        "transfer",
+        "inquiry",
+        "other"
+      ],
+      "question_text": "您主要想办理社保缴费、社保转移，还是查询或其他业务？",
+      "candidate_business_id": null,
+      "unsupported_reason": null,
+      "source_condition_refs": null
+    },
+    {
+      "node_id": "payment_actor",
+      "node_type": "SLOT_GATE",
+      "design_basis": "SYSTEM_DESIGNED",
+      "slot_name": "payment_actor",
+      "allowed_values": [
+        "self_payment",
+        "employer_payment",
+        "other"
+      ],
+      "question_text": "这次社保缴费主要是单位缴，还是您自己缴？",
+      "candidate_business_id": null,
+      "unsupported_reason": null,
+      "source_condition_refs": null
+    },
+    {
+      "node_id": "employment_type",
+      "node_type": "SLOT_GATE",
+      "design_basis": "SOURCE_SUPPORTED",
+      "slot_name": "employment_type",
+      "allowed_values": [
+        "self_employed_without_employees",
+        "part_time_without_employer_insurance",
+        "other_flexible_employment"
+      ],
+      "question_text": "您属于哪种灵活就业情况？例如个体户、未在单位参保的非全日制人员，或其他灵活就业人员。",
+      "candidate_business_id": null,
+      "unsupported_reason": null,
+      "source_condition_refs": [
+        {
+          "business_id": "DEMO_SS_001",
+          "condition_id": "cond-applicant-01"
+        },
+        {
+          "business_id": "DEMO_SS_001",
+          "condition_id": "cond-applicant-02"
+        },
+        {
+          "business_id": "DEMO_SS_001",
+          "condition_id": "cond-applicant-03"
+        }
+      ]
+    },
+    {
+      "node_id": "terminal_demo_ss_001",
+      "node_type": "TERMINAL_CANDIDATE",
+      "design_basis": "SYSTEM_DESIGNED",
+      "slot_name": null,
+      "allowed_values": null,
+      "question_text": null,
+      "candidate_business_id": "DEMO_SS_001",
+      "unsupported_reason": null,
+      "source_condition_refs": null
+    },
+    {
+      "node_id": "unsupported_transfer",
+      "node_type": "UNSUPPORTED",
+      "design_basis": "SYSTEM_DESIGNED",
+      "slot_name": null,
+      "allowed_values": null,
+      "question_text": null,
+      "candidate_business_id": null,
+      "unsupported_reason": "社会保险关系转移接续暂无正式办事指南数据",
+      "source_condition_refs": null
+    },
+    {
+      "node_id": "social_security_fallback",
+      "node_type": "FALLBACK",
+      "design_basis": "SYSTEM_DESIGNED",
+      "slot_name": null,
+      "allowed_values": null,
+      "question_text": null,
+      "candidate_business_id": null,
+      "unsupported_reason": null,
+      "source_condition_refs": null
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "e-entry-action",
+      "from_node_id": "social_security_entry",
+      "to_node_id": "social_security_action",
+      "edge_kind": "ENTRY_FORWARD",
+      "design_basis": "SYSTEM_DESIGNED",
+      "match": null,
+      "source_condition_refs": null
+    },
+    {
+      "edge_id": "e-action-payment",
+      "from_node_id": "social_security_action",
+      "to_node_id": "payment_actor",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SYSTEM_DESIGNED",
+      "match": {
+        "slot": "service_action",
+        "operator": "EQ",
+        "value": "payment"
+      },
+      "source_condition_refs": null
+    },
+    {
+      "edge_id": "e-action-transfer",
+      "from_node_id": "social_security_action",
+      "to_node_id": "unsupported_transfer",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SYSTEM_DESIGNED",
+      "match": {
+        "slot": "service_action",
+        "operator": "EQ",
+        "value": "transfer"
+      },
+      "source_condition_refs": null
+    },
+    {
+      "edge_id": "e-action-inquiry",
+      "from_node_id": "social_security_action",
+      "to_node_id": "social_security_fallback",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SYSTEM_DESIGNED",
+      "match": {
+        "slot": "service_action",
+        "operator": "EQ",
+        "value": "inquiry"
+      },
+      "source_condition_refs": null
+    },
+    {
+      "edge_id": "e-action-other",
+      "from_node_id": "social_security_action",
+      "to_node_id": "social_security_fallback",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SYSTEM_DESIGNED",
+      "match": {
+        "slot": "service_action",
+        "operator": "EQ",
+        "value": "other"
+      },
+      "source_condition_refs": null
+    },
+    {
+      "edge_id": "e-payment-self",
+      "from_node_id": "payment_actor",
+      "to_node_id": "employment_type",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SYSTEM_DESIGNED",
+      "match": {
+        "slot": "payment_actor",
+        "operator": "EQ",
+        "value": "self_payment"
+      },
+      "source_condition_refs": null
+    },
+    {
+      "edge_id": "e-payment-employer",
+      "from_node_id": "payment_actor",
+      "to_node_id": "social_security_fallback",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SYSTEM_DESIGNED",
+      "match": {
+        "slot": "payment_actor",
+        "operator": "EQ",
+        "value": "employer_payment"
+      },
+      "source_condition_refs": null
+    },
+    {
+      "edge_id": "e-payment-other",
+      "from_node_id": "payment_actor",
+      "to_node_id": "social_security_fallback",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SYSTEM_DESIGNED",
+      "match": {
+        "slot": "payment_actor",
+        "operator": "EQ",
+        "value": "other"
+      },
+      "source_condition_refs": null
+    },
+    {
+      "edge_id": "e-emp-self-employed",
+      "from_node_id": "employment_type",
+      "to_node_id": "terminal_demo_ss_001",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SOURCE_SUPPORTED",
+      "match": {
+        "slot": "employment_type",
+        "operator": "EQ",
+        "value": "self_employed_without_employees"
+      },
+      "source_condition_refs": [
+        {
+          "business_id": "DEMO_SS_001",
+          "condition_id": "cond-applicant-01"
+        }
+      ]
+    },
+    {
+      "edge_id": "e-emp-part-time",
+      "from_node_id": "employment_type",
+      "to_node_id": "terminal_demo_ss_001",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SOURCE_SUPPORTED",
+      "match": {
+        "slot": "employment_type",
+        "operator": "EQ",
+        "value": "part_time_without_employer_insurance"
+      },
+      "source_condition_refs": [
+        {
+          "business_id": "DEMO_SS_001",
+          "condition_id": "cond-applicant-02"
+        }
+      ]
+    },
+    {
+      "edge_id": "e-emp-other-flex",
+      "from_node_id": "employment_type",
+      "to_node_id": "terminal_demo_ss_001",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SOURCE_SUPPORTED",
+      "match": {
+        "slot": "employment_type",
+        "operator": "EQ",
+        "value": "other_flexible_employment"
+      },
+      "source_condition_refs": [
+        {
+          "business_id": "DEMO_SS_001",
+          "condition_id": "cond-applicant-03"
+        }
+      ]
+    }
+  ]
+}
