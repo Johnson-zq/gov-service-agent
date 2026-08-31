@@ -1,0 +1,293 @@
+{
+  "schema_version": "1",
+  "business": {
+    "business_id": "DEMO_SS_001",
+    "canonical_name": "灵活就业人员社会保险费申报缴费",
+    "category": "social_security",
+    "data_scope": "DEMO",
+    "data_version": 1,
+    "status": "ACTIVE",
+    "primary_source_id": "src-demo-ss-001",
+    "updated_at": "2026-08-31T14:00:00+08:00",
+    "service_target": "个人",
+    "implementing_authority": "区税务局",
+    "on_site_visits": "0次",
+    "quantity_limit": "无数量限制",
+    "prohibition": "无禁止性要求",
+    "metadata_source_id": "src-demo-ss-001",
+    "metadata_source_status": "SOURCE_EXPLICIT"
+  },
+  "sources": [
+    {
+      "source_id": "src-demo-ss-001",
+      "source_title": "灵活就业人员社会保险费申报缴费",
+      "source_type": "OFFICIAL_GUIDE",
+      "source_file": "灵活就业人员社会保险费申报缴费.doc",
+      "source_section": null,
+      "effective_date": null,
+      "source_version": null,
+      "ingested_at": null,
+      "ingested_by": null
+    }
+  ],
+  "materials": [
+    {
+      "material_id": "mat-id-card",
+      "evidence": {
+        "source_id": "src-demo-ss-001",
+        "source_section": "申请材料",
+        "source_excerpt": null
+      },
+      "source_text": "身份证",
+      "source_status": "SOURCE_EXPLICIT",
+      "requirement_level": "REQUIRED",
+      "requirement_level_status": "SYSTEM_DERIVED",
+      "derivation_note": "来源于指南申请材料栏目语义"
+    }
+  ],
+  "handling_locations": [
+    {
+      "location_id": "loc-jianguo-south",
+      "evidence": {
+        "source_id": "src-demo-ss-001",
+        "source_section": "受理地点",
+        "source_excerpt": null
+      },
+      "name": "国家税务总局杭州市上城区税务局建国南路办公区",
+      "name_status": "SOURCE_EXPLICIT",
+      "address": "杭州市上城区小营街道建国南路42号",
+      "address_status": "SOURCE_EXPLICIT",
+      "service_hours": {
+        "raw_text": "法定工作日 上午8:30-12:00 下午14:00-17:30 执行午间值班",
+        "source_status": "SOURCE_EXPLICIT"
+      },
+      "floor": null,
+      "window": null,
+      "location_detail_status": "UNKNOWN_DETAIL"
+    }
+  ],
+  "channels": [
+    {
+      "channel_id": "ch-bank-window",
+      "evidence": {
+        "source_id": "src-demo-ss-001",
+        "source_section": "缴费渠道",
+        "source_excerpt": null
+      },
+      "source_name": "银行窗口",
+      "source_status": "SOURCE_EXPLICIT",
+      "channel_type": "BANK_WINDOW",
+      "channel_type_status": "SYSTEM_DERIVED",
+      "channel_type_rule": "channel_type_v1",
+      "channel_purpose": "PAYMENT",
+      "channel_purpose_status": "SYSTEM_DERIVED",
+      "channel_purpose_rule": "channel_purpose_v1",
+      "channel_purpose_source_text": "缴费渠道"
+    },
+    {
+      "channel_id": "ch-alipay",
+      "evidence": {
+        "source_id": "src-demo-ss-001",
+        "source_section": "缴费渠道",
+        "source_excerpt": null
+      },
+      "source_name": "支付宝",
+      "source_status": "SOURCE_EXPLICIT",
+      "channel_type": "ONLINE",
+      "channel_type_status": "SYSTEM_DERIVED",
+      "channel_type_rule": "channel_type_v1",
+      "channel_purpose": "PAYMENT",
+      "channel_purpose_status": "SYSTEM_DERIVED",
+      "channel_purpose_rule": "channel_purpose_v1",
+      "channel_purpose_source_text": "缴费渠道"
+    },
+    {
+      "channel_id": "ch-wechat-mini",
+      "evidence": {
+        "source_id": "src-demo-ss-001",
+        "source_section": "缴费渠道",
+        "source_excerpt": null
+      },
+      "source_name": "微信\"浙江税务社保缴费\"小程序",
+      "source_status": "SOURCE_EXPLICIT",
+      "channel_type": "MINI_PROGRAM",
+      "channel_type_status": "SYSTEM_DERIVED",
+      "channel_type_rule": "channel_type_v1",
+      "channel_purpose": "PAYMENT",
+      "channel_purpose_status": "SYSTEM_DERIVED",
+      "channel_purpose_rule": "channel_purpose_v1",
+      "channel_purpose_source_text": "缴费渠道"
+    },
+    {
+      "channel_id": "ch-self-service",
+      "evidence": {
+        "source_id": "src-demo-ss-001",
+        "source_section": "缴费渠道",
+        "source_excerpt": null
+      },
+      "source_name": "税务自助办税终端",
+      "source_status": "SOURCE_EXPLICIT",
+      "channel_type": "SELF_SERVICE_TERMINAL",
+      "channel_type_status": "SYSTEM_DERIVED",
+      "channel_type_rule": "channel_type_v1",
+      "channel_purpose": "PAYMENT",
+      "channel_purpose_status": "SYSTEM_DERIVED",
+      "channel_purpose_rule": "channel_purpose_v1",
+      "channel_purpose_source_text": "缴费渠道"
+    },
+    {
+      "channel_id": "ch-etax-zj",
+      "evidence": {
+        "source_id": "src-demo-ss-001",
+        "source_section": "缴费渠道",
+        "source_excerpt": null
+      },
+      "source_name": "浙江省电子税务局",
+      "source_status": "SOURCE_EXPLICIT",
+      "channel_type": "ONLINE",
+      "channel_type_status": "SYSTEM_DERIVED",
+      "channel_type_rule": "channel_type_v1",
+      "channel_purpose": "PAYMENT",
+      "channel_purpose_status": "SYSTEM_DERIVED",
+      "channel_purpose_rule": "channel_purpose_v1",
+      "channel_purpose_source_text": "缴费渠道"
+    },
+    {
+      "channel_id": "ch-service-hall",
+      "evidence": {
+        "source_id": "src-demo-ss-001",
+        "source_section": "缴费渠道",
+        "source_excerpt": null
+      },
+      "source_name": "办税服务厅",
+      "source_status": "SOURCE_EXPLICIT",
+      "channel_type": "SERVICE_HALL",
+      "channel_type_status": "SYSTEM_DERIVED",
+      "channel_type_rule": "channel_type_v1",
+      "channel_purpose": "PAYMENT",
+      "channel_purpose_status": "SYSTEM_DERIVED",
+      "channel_purpose_rule": "channel_purpose_v1",
+      "channel_purpose_source_text": "缴费渠道"
+    }
+  ],
+  "legal_basis": [
+    {
+      "legal_basis_id": "legal-social-insurance-law-60",
+      "evidence": {
+        "source_id": "src-demo-ss-001",
+        "source_section": "法律依据",
+        "source_excerpt": null
+      },
+      "law_name": "中华人民共和国社会保险法",
+      "law_name_status": "SOURCE_EXPLICIT",
+      "article": "第六十条",
+      "article_status": "SOURCE_EXPLICIT",
+      "text_excerpt": null
+    }
+  ],
+  "conditions": [
+    {
+      "condition_id": "cond-applicant-01",
+      "role": "APPLICANT_SCOPE",
+      "evidence": {
+        "source_id": "src-demo-ss-001",
+        "source_section": "申请对象",
+        "source_excerpt": null
+      },
+      "source_text": "无雇工的个体工商户",
+      "source_status": "SOURCE_EXPLICIT",
+      "field": "employment_type",
+      "normalized_values": ["self_employed_without_employees"],
+      "normalized_status": "SYSTEM_DERIVED",
+      "normalization_rule": "applicant_scope_v1",
+      "derivation_note": null,
+      "executable": null
+    },
+    {
+      "condition_id": "cond-applicant-02",
+      "role": "APPLICANT_SCOPE",
+      "evidence": {
+        "source_id": "src-demo-ss-001",
+        "source_section": "申请对象",
+        "source_excerpt": null
+      },
+      "source_text": "未在用人单位参加社会保险的非全日制从业人员",
+      "source_status": "SOURCE_EXPLICIT",
+      "field": "employment_type",
+      "normalized_values": ["part_time_without_employer_insurance"],
+      "normalized_status": "SYSTEM_DERIVED",
+      "normalization_rule": "applicant_scope_v1",
+      "derivation_note": null,
+      "executable": null
+    },
+    {
+      "condition_id": "cond-applicant-03",
+      "role": "APPLICANT_SCOPE",
+      "evidence": {
+        "source_id": "src-demo-ss-001",
+        "source_section": "申请对象",
+        "source_excerpt": null
+      },
+      "source_text": "其他灵活就业人员",
+      "source_status": "SOURCE_EXPLICIT",
+      "field": "employment_type",
+      "normalized_values": ["other_flexible_employment"],
+      "normalized_status": "SYSTEM_DERIVED",
+      "normalization_rule": "applicant_scope_v1",
+      "derivation_note": null,
+      "executable": null
+    },
+    {
+      "condition_id": "cond-tc-01",
+      "role": "ELIGIBILITY",
+      "evidence": null,
+      "source_text": null,
+      "source_status": "TO_CONFIRM",
+      "field": "flex_registration_completed",
+      "normalized_values": null,
+      "normalized_status": "TO_CONFIRM",
+      "normalization_rule": null,
+      "derivation_note": "旧设计假设，指南未明确证明为必要条件",
+      "executable": null
+    },
+    {
+      "condition_id": "cond-tc-02",
+      "role": "PROCESS_BRANCH",
+      "evidence": null,
+      "source_text": null,
+      "source_status": "TO_CONFIRM",
+      "field": "payment_occasion",
+      "normalized_values": null,
+      "normalized_status": "TO_CONFIRM",
+      "normalization_rule": null,
+      "derivation_note": "首次/续缴情形，指南未明确",
+      "executable": null
+    },
+    {
+      "condition_id": "cond-tc-03",
+      "role": "ELIGIBILITY",
+      "evidence": null,
+      "source_text": null,
+      "source_status": "TO_CONFIRM",
+      "field": "household_registration",
+      "normalized_values": null,
+      "normalized_status": "TO_CONFIRM",
+      "normalization_rule": null,
+      "derivation_note": "户籍/居住地要求，指南未明确",
+      "executable": null
+    },
+    {
+      "condition_id": "cond-tc-04",
+      "role": "ELIGIBILITY",
+      "evidence": null,
+      "source_text": null,
+      "source_status": "TO_CONFIRM",
+      "field": "insurance_enrollment_status",
+      "normalized_values": null,
+      "normalized_status": "TO_CONFIRM",
+      "normalization_rule": null,
+      "derivation_note": "是否已参保，指南未明确",
+      "executable": null
+    }
+  ]
+}
