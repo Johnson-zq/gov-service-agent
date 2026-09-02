@@ -9,6 +9,9 @@ dependencies = [
     "pydantic>=2,<3",
     "pydantic-settings>=2.0",
     "python-dotenv>=0.21",
+    "sqlalchemy>=2.0,<3",
+    "alembic>=1.13,<2",
+    "psycopg[binary]>=3.1,<4",
 ]
 
 [project.optional-dependencies]
@@ -26,3 +29,6 @@ sources = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "integration: tests requiring Docker PostgreSQL and TEST_DATABASE_URL",
+]

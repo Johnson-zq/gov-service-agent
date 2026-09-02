@@ -1,4 +1,4 @@
-"""Runtime settings: APP_ENV and LOG_LEVEL only."""
+"""Runtime settings: APP_ENV, LOG_LEVEL, and optional DATABASE_URL."""
 
 from __future__ import annotations
 
@@ -14,6 +14,8 @@ from pydantic_settings import (
     PydanticBaseSettingsSource,
     SettingsConfigDict,
 )
+from sqlalchemy.engine.url import make_url
+from sqlalchemy.exc import ArgumentError
 
 
 class AppEnv(str, Enum):
@@ -31,12 +33,40 @@ class LogLevel(str, Enum):
     CRITICAL = "CRITICAL"
 
 
-_ALLOWED_ENV_FILE_KEYS = frozenset({"APP_ENV", "LOG_LEVEL"})
+KNOWN_DOTENV_KEYS = frozenset(
+    {
+        "APP_ENV",
+        "LOG_LEVEL",
+        "DATABASE_URL",
+        "POSTGRES_DB",
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "TEST_DATABASE_URL",
+    }
+)
+
+APPLICATION_DOTENV_KEYS = frozenset(
+    {
+        "APP_ENV",
+        "LOG_LEVEL",
+        "DATABASE_URL",
+    }
+)
+
+# pydantic-settings DotEnv source returns model field names.
+_APPLICATION_SETTINGS_FIELDS = frozenset(
+    {
+        "app_env",
+        "log_level",
+        "database_url",
+    }
+)
 
 
 class StrictDotEnvSettingsSource(DotEnvSettingsSource):
     """
-    Project .env unknown keys fail-fast.
+    Project .env unknown keys fail-fast (Stage 1), then only Application
+    fields enter the Settings payload (Stage 2).
 
     Process environment remains field-scoped: unrelated vars such as PATH /
     CONDA_* are never bound to this model and do not cause errors.
@@ -60,44 +90,82 @@ class StrictDotEnvSettingsSource(DotEnvSettingsSource):
         for path in files:
             if not path.is_file():
                 continue
-            # Same loader path as pydantic-settings DotEnvSettingsSource
+            # Stage 1: scan raw dotenv keys (must not rely on super().__call__).
             from dotenv import dotenv_values
 
             values = dotenv_values(path, encoding=encoding)
             for key in values:
                 if key is None or key.strip() == "":
                     continue
-                if key.upper() not in _ALLOWED_ENV_FILE_KEYS:
+                if key.upper() not in KNOWN_DOTENV_KEYS:
                     unknown.append(key)
 
         if unknown:
             sorted_unknown = ", ".join(sorted(set(unknown)))
-            allowed = ", ".join(sorted(_ALLOWED_ENV_FILE_KEYS))
+            allowed = ", ".join(sorted(KNOWN_DOTENV_KEYS))
             raise ValueError(
                 f"Unknown settings keys in env file: {sorted_unknown}. "
                 f"Allowed keys: {allowed}."
             )
-        return super().__call__()
+
+        # Stage 2: parent maps env aliases to field names; keep only app fields.
+        payload = super().__call__()
+        return {
+            key: value
+            for key, value in payload.items()
+            if key in _APPLICATION_SETTINGS_FIELDS
+        }
 
 
 class Settings(BaseSettings):
-    """Minimal F01 runtime settings."""
+    """F01 runtime settings plus optional F05 DATABASE_URL."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         extra="forbid",
         case_sensitive=False,
+        hide_input_in_errors=True,
     )
 
     app_env: AppEnv = AppEnv.LOCAL
     log_level: LogLevel = LogLevel.INFO
+    database_url: str | None = None
 
     @field_validator("app_env", "log_level", mode="before")
     @classmethod
     def _normalize_upper(cls, value: Any) -> Any:
         if isinstance(value, str):
             return value.strip().upper()
+        return value
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def _normalize_database_url(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped == "":
+                return None
+            return stripped
+        return value
+
+    @field_validator("database_url", mode="after")
+    @classmethod
+    def _validate_database_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        try:
+            parsed = make_url(value)
+        except ArgumentError:
+            raise ValueError(
+                "DATABASE_URL must be a valid postgresql+psycopg URL"
+            ) from None
+        if parsed.drivername != "postgresql+psycopg":
+            raise ValueError(
+                "DATABASE_URL must be a valid postgresql+psycopg URL"
+            )
         return value
 
     @classmethod
