@@ -22,9 +22,21 @@ _VALID_DATABASE_URL = (
 )
 
 
+_EMBEDDING_ENV_KEYS = (
+    "EMBEDDING_PROVIDER",
+    "EMBEDDING_MODEL_ID",
+    "EMBEDDING_MODEL_PATH",
+    "EMBEDDING_DEVICE",
+    "RETRIEVAL_TOP_K",
+    "RETRIEVAL_MIN_SCORE",
+)
+
+
 @pytest.fixture(autouse=True)
-def _clear_settings_cache():
+def _clear_settings_cache(monkeypatch: pytest.MonkeyPatch):
     get_settings.cache_clear()
+    for key in _EMBEDDING_ENV_KEYS:
+        monkeypatch.delenv(key, raising=False)
     yield
     get_settings.cache_clear()
 
@@ -37,6 +49,12 @@ def test_defaults_without_env_file(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.app_env == AppEnv.LOCAL
     assert settings.log_level == LogLevel.INFO
     assert settings.database_url is None
+    assert settings.embedding_provider is None
+    assert settings.embedding_model_id is None
+    assert settings.embedding_model_path is None
+    assert settings.embedding_device == "auto"
+    assert settings.retrieval_top_k == 5
+    assert settings.retrieval_min_score == 0.50
 
 
 @pytest.mark.parametrize(
@@ -284,3 +302,119 @@ def test_os_env_noise_does_not_trigger_dotenv_fail_fast(
     settings = Settings(_env_file=str(env_file))
     assert settings.app_env == AppEnv.LOCAL
     assert settings.log_level == LogLevel.INFO
+
+
+def test_f06_embedding_keys_allowed_in_dotenv(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.delenv("APP_ENV", raising=False)
+    monkeypatch.delenv("LOG_LEVEL", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "APP_ENV=LOCAL\n"
+        "LOG_LEVEL=INFO\n"
+        "EMBEDDING_PROVIDER=LOCAL_SENTENCE_TRANSFORMER\n"
+        "EMBEDDING_MODEL_ID=AI-ModelScope/gte-base-zh\n"
+        "EMBEDDING_MODEL_PATH=models/placeholder\n"
+        "EMBEDDING_DEVICE=cpu\n"
+        "RETRIEVAL_TOP_K=5\n"
+        "RETRIEVAL_MIN_SCORE=0.50\n",
+        encoding="utf-8",
+    )
+    settings = Settings(_env_file=str(env_file))
+    assert settings.embedding_provider == "LOCAL_SENTENCE_TRANSFORMER"
+    assert settings.embedding_model_id == "AI-ModelScope/gte-base-zh"
+    assert settings.embedding_model_path == "models/placeholder"
+    assert settings.embedding_device == "cpu"
+    assert "EMBEDDING_PROVIDER" in APPLICATION_DOTENV_KEYS
+
+
+@pytest.mark.parametrize("device", ["auto", "cpu", "cuda"])
+def test_valid_embedding_device(
+    monkeypatch: pytest.MonkeyPatch, device: str
+) -> None:
+    monkeypatch.delenv("APP_ENV", raising=False)
+    monkeypatch.delenv("LOG_LEVEL", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("EMBEDDING_DEVICE", device)
+    settings = Settings(_env_file=None)
+    assert settings.embedding_device == device
+
+
+def test_invalid_embedding_device_fail_fast(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("APP_ENV", raising=False)
+    monkeypatch.delenv("LOG_LEVEL", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("EMBEDDING_DEVICE", "gpu")
+    monkeypatch.setenv(
+        "EMBEDDING_PROVIDER", "LOCAL_SENTENCE_TRANSFORMER"
+    )
+    monkeypatch.setenv("EMBEDDING_MODEL_ID", "fake-model")
+    monkeypatch.setenv("EMBEDDING_MODEL_PATH", "secret-local-model-path")
+    with pytest.raises(ValidationError) as exc_info:
+        Settings(_env_file=None)
+    message = str(exc_info.value)
+    assert "secret-local-model-path" not in message
+    assert _VALID_DATABASE_URL not in message
+
+
+@pytest.mark.parametrize("top_k", [1, 5, 50])
+def test_valid_retrieval_top_k(
+    monkeypatch: pytest.MonkeyPatch, top_k: int
+) -> None:
+    monkeypatch.delenv("APP_ENV", raising=False)
+    monkeypatch.delenv("LOG_LEVEL", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("RETRIEVAL_TOP_K", str(top_k))
+    settings = Settings(_env_file=None)
+    assert settings.retrieval_top_k == top_k
+
+
+@pytest.mark.parametrize("top_k", [0, 51])
+def test_invalid_retrieval_top_k(
+    monkeypatch: pytest.MonkeyPatch, top_k: int
+) -> None:
+    monkeypatch.delenv("APP_ENV", raising=False)
+    monkeypatch.delenv("LOG_LEVEL", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("RETRIEVAL_TOP_K", str(top_k))
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None)
+
+
+@pytest.mark.parametrize("score", [-1.0, 0.0, 0.50, 1.0])
+def test_valid_retrieval_min_score(
+    monkeypatch: pytest.MonkeyPatch, score: float
+) -> None:
+    monkeypatch.delenv("APP_ENV", raising=False)
+    monkeypatch.delenv("LOG_LEVEL", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("RETRIEVAL_MIN_SCORE", str(score))
+    settings = Settings(_env_file=None)
+    assert settings.retrieval_min_score == score
+
+
+@pytest.mark.parametrize("score", [-1.01, 1.01])
+def test_invalid_retrieval_min_score(
+    monkeypatch: pytest.MonkeyPatch, score: float
+) -> None:
+    monkeypatch.delenv("APP_ENV", raising=False)
+    monkeypatch.delenv("LOG_LEVEL", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("RETRIEVAL_MIN_SCORE", str(score))
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None)
+
+
+def test_partial_embedding_config_fail_fast(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("APP_ENV", raising=False)
+    monkeypatch.delenv("LOG_LEVEL", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("EMBEDDING_PROVIDER", "LOCAL_SENTENCE_TRANSFORMER")
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None)

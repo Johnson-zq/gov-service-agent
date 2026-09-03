@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "policy_version": "f06-online-v1",
+  "entries": [
+    {
+      "business_id": "DEMO_SS_001",
+      "decision": "ALLOW",
+      "reason": "current_demo_online_scope"
+    }
+  ]
+}

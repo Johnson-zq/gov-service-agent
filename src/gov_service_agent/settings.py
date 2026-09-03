@@ -1,4 +1,4 @@
-"""Runtime settings: APP_ENV, LOG_LEVEL, and optional DATABASE_URL."""
+"""Runtime settings: APP_ENV, LOG_LEVEL, optional DATABASE_URL, F06 embedding."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Type
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import (
     BaseSettings,
     DotEnvSettingsSource,
@@ -42,6 +42,12 @@ KNOWN_DOTENV_KEYS = frozenset(
         "POSTGRES_USER",
         "POSTGRES_PASSWORD",
         "TEST_DATABASE_URL",
+        "EMBEDDING_PROVIDER",
+        "EMBEDDING_MODEL_ID",
+        "EMBEDDING_MODEL_PATH",
+        "EMBEDDING_DEVICE",
+        "RETRIEVAL_TOP_K",
+        "RETRIEVAL_MIN_SCORE",
     }
 )
 
@@ -50,6 +56,12 @@ APPLICATION_DOTENV_KEYS = frozenset(
         "APP_ENV",
         "LOG_LEVEL",
         "DATABASE_URL",
+        "EMBEDDING_PROVIDER",
+        "EMBEDDING_MODEL_ID",
+        "EMBEDDING_MODEL_PATH",
+        "EMBEDDING_DEVICE",
+        "RETRIEVAL_TOP_K",
+        "RETRIEVAL_MIN_SCORE",
     }
 )
 
@@ -59,6 +71,12 @@ _APPLICATION_SETTINGS_FIELDS = frozenset(
         "app_env",
         "log_level",
         "database_url",
+        "embedding_provider",
+        "embedding_model_id",
+        "embedding_model_path",
+        "embedding_device",
+        "retrieval_top_k",
+        "retrieval_min_score",
     }
 )
 
@@ -118,7 +136,7 @@ class StrictDotEnvSettingsSource(DotEnvSettingsSource):
 
 
 class Settings(BaseSettings):
-    """F01 runtime settings plus optional F05 DATABASE_URL."""
+    """F01/F05 runtime settings plus optional F06 embedding/retrieval config."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -131,6 +149,13 @@ class Settings(BaseSettings):
     app_env: AppEnv = AppEnv.LOCAL
     log_level: LogLevel = LogLevel.INFO
     database_url: str | None = None
+
+    embedding_provider: str | None = None
+    embedding_model_id: str | None = None
+    embedding_model_path: str | None = None
+    embedding_device: str = "auto"
+    retrieval_top_k: int = 5
+    retrieval_min_score: float = 0.50
 
     @field_validator("app_env", "log_level", mode="before")
     @classmethod
@@ -167,6 +192,87 @@ class Settings(BaseSettings):
                 "DATABASE_URL must be a valid postgresql+psycopg URL"
             )
         return value
+
+    @field_validator(
+        "embedding_provider",
+        "embedding_model_id",
+        "embedding_model_path",
+        mode="before",
+    )
+    @classmethod
+    def _normalize_optional_str(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped == "":
+                return None
+            return stripped
+        return value
+
+    @field_validator("embedding_device", mode="before")
+    @classmethod
+    def _normalize_device(cls, value: Any) -> Any:
+        if value is None or (isinstance(value, str) and value.strip() == ""):
+            return "auto"
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
+
+    @field_validator("embedding_device", mode="after")
+    @classmethod
+    def _validate_device(cls, value: str) -> str:
+        if value not in {"auto", "cpu", "cuda"}:
+            raise ValueError("EMBEDDING_DEVICE must be auto, cpu, or cuda")
+        return value
+
+    @field_validator("embedding_provider", mode="after")
+    @classmethod
+    def _validate_provider(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if value != "LOCAL_SENTENCE_TRANSFORMER":
+            raise ValueError(
+                "EMBEDDING_PROVIDER must be LOCAL_SENTENCE_TRANSFORMER"
+            )
+        return value
+
+    @field_validator("retrieval_top_k", mode="after")
+    @classmethod
+    def _validate_top_k(cls, value: int) -> int:
+        if value < 1 or value > 50:
+            raise ValueError("RETRIEVAL_TOP_K must be between 1 and 50")
+        return value
+
+    @field_validator("retrieval_min_score", mode="after")
+    @classmethod
+    def _validate_min_score(cls, value: float) -> float:
+        if value < -1.0 or value > 1.0:
+            raise ValueError("RETRIEVAL_MIN_SCORE must be between -1.0 and 1.0")
+        return value
+
+    @model_validator(mode="after")
+    def _embedding_fields_together(self) -> Settings:
+        configured = (
+            self.embedding_provider is not None
+            or self.embedding_model_id is not None
+            or self.embedding_model_path is not None
+        )
+        if not configured:
+            return self
+        if self.embedding_provider is None:
+            raise ValueError(
+                "EMBEDDING_PROVIDER is required when embedding settings are set"
+            )
+        if self.embedding_model_id is None:
+            raise ValueError(
+                "EMBEDDING_MODEL_ID is required when embedding settings are set"
+            )
+        if self.embedding_model_path is None:
+            raise ValueError(
+                "EMBEDDING_MODEL_PATH is required when embedding settings are set"
+            )
+        return self
 
     @classmethod
     def settings_customise_sources(
