@@ -13,12 +13,12 @@ dependencies = [
     "alembic>=1.13,<2",
     "psycopg[binary]>=3.1,<4",
     "pgvector>=0.3,<0.5",
+    "httpx>=0.27,<1",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.4",
-    "httpx>=0.24",
 ]
 embedding-local = [
     "sentence-transformers>=3.0,<7",
@@ -36,4 +36,5 @@ testpaths = ["tests"]
 markers = [
     "integration: tests requiring Docker PostgreSQL and TEST_DATABASE_URL",
     "embedding_real: opt-in tests requiring local embedding model weights",
+    "llm_real: opt-in tests requiring company LLM configuration",
 ]

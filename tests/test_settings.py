@@ -31,11 +31,22 @@ _EMBEDDING_ENV_KEYS = (
     "RETRIEVAL_MIN_SCORE",
 )
 
+_LLM_ENV_KEYS = (
+    "LLM_PROVIDER",
+    "LLM_MODEL_ID",
+    "LLM_BASE_URL",
+    "LLM_API_KEY",
+    "LLM_TIMEOUT_SECONDS",
+    "LLM_MAX_RETRIES",
+)
+
 
 @pytest.fixture(autouse=True)
 def _clear_settings_cache(monkeypatch: pytest.MonkeyPatch):
     get_settings.cache_clear()
     for key in _EMBEDDING_ENV_KEYS:
+        monkeypatch.delenv(key, raising=False)
+    for key in _LLM_ENV_KEYS:
         monkeypatch.delenv(key, raising=False)
     yield
     get_settings.cache_clear()
@@ -55,6 +66,12 @@ def test_defaults_without_env_file(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.embedding_device == "auto"
     assert settings.retrieval_top_k == 5
     assert settings.retrieval_min_score == 0.50
+    assert settings.llm_provider is None
+    assert settings.llm_model_id is None
+    assert settings.llm_base_url is None
+    assert settings.llm_api_key is None
+    assert settings.llm_timeout_seconds == 60.0
+    assert settings.llm_max_retries == 1
 
 
 @pytest.mark.parametrize(
@@ -418,3 +435,162 @@ def test_partial_embedding_config_fail_fast(
     monkeypatch.setenv("EMBEDDING_PROVIDER", "LOCAL_SENTENCE_TRANSFORMER")
     with pytest.raises(ValidationError):
         Settings(_env_file=None)
+
+
+def test_llm_provider_blank_becomes_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM_PROVIDER", "  ")
+    settings = Settings(_env_file=None)
+    assert settings.llm_provider is None
+
+
+@pytest.mark.parametrize("value", ["DEMO", "OPENAI_COMPATIBLE", "demo"])
+def test_valid_llm_provider(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
+    monkeypatch.setenv("LLM_PROVIDER", value)
+    settings = Settings(_env_file=None)
+    assert settings.llm_provider == value.upper()
+
+
+def test_unknown_llm_provider_fail_fast(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM_PROVIDER", "WEIRD")
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None)
+
+
+def test_llm_model_id_blank_becomes_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM_MODEL_ID", " \t ")
+    settings = Settings(_env_file=None)
+    assert settings.llm_model_id is None
+
+
+def test_llm_base_url_blank_becomes_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM_BASE_URL", "")
+    settings = Settings(_env_file=None)
+    assert settings.llm_base_url is None
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://llm.test/v1",
+        "https://llm.test/v1",
+        "http://127.0.0.1:8000/v1",
+    ],
+)
+def test_valid_llm_base_url(monkeypatch: pytest.MonkeyPatch, url: str) -> None:
+    monkeypatch.setenv("LLM_BASE_URL", url)
+    settings = Settings(_env_file=None)
+    assert settings.llm_base_url == url
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://user:pass@llm.test/v1",
+        "http://user@llm.test/v1",
+        "http://llm.test/v1?x=1",
+        "http://llm.test/v1#frag",
+        "ftp://llm.test/v1",
+        "http:///nohost",
+    ],
+)
+def test_invalid_llm_base_url(monkeypatch: pytest.MonkeyPatch, url: str) -> None:
+    monkeypatch.setenv("LLM_BASE_URL", url)
+    with pytest.raises(ValidationError) as exc_info:
+        Settings(_env_file=None)
+    message = str(exc_info.value)
+    assert "pass" not in message or "LLM_BASE_URL" in message
+    assert "user:pass" not in message
+
+
+def test_llm_api_key_blank_becomes_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM_API_KEY", "  ")
+    settings = Settings(_env_file=None)
+    assert settings.llm_api_key is None
+
+
+def test_llm_api_key_is_secret_str(monkeypatch: pytest.MonkeyPatch) -> None:
+    from pydantic import SecretStr
+
+    monkeypatch.setenv("LLM_API_KEY", "SUPER_SECRET_TEST_TOKEN")
+    settings = Settings(_env_file=None)
+    assert isinstance(settings.llm_api_key, SecretStr)
+    assert "SUPER_SECRET_TEST_TOKEN" not in repr(settings)
+    assert "SUPER_SECRET_TEST_TOKEN" not in str(settings)
+
+
+@pytest.mark.parametrize("timeout", [1.0, 60.0, 300.0])
+def test_valid_llm_timeout(monkeypatch: pytest.MonkeyPatch, timeout: float) -> None:
+    monkeypatch.setenv("LLM_TIMEOUT_SECONDS", str(timeout))
+    settings = Settings(_env_file=None)
+    assert settings.llm_timeout_seconds == timeout
+
+
+@pytest.mark.parametrize("timeout", [0.9, 300.1])
+def test_invalid_llm_timeout(monkeypatch: pytest.MonkeyPatch, timeout: float) -> None:
+    monkeypatch.setenv("LLM_TIMEOUT_SECONDS", str(timeout))
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None)
+
+
+@pytest.mark.parametrize("retries", [0, 1, 3])
+def test_valid_llm_max_retries(monkeypatch: pytest.MonkeyPatch, retries: int) -> None:
+    monkeypatch.setenv("LLM_MAX_RETRIES", str(retries))
+    settings = Settings(_env_file=None)
+    assert settings.llm_max_retries == retries
+
+
+@pytest.mark.parametrize("retries", [-1, 4])
+def test_invalid_llm_max_retries(monkeypatch: pytest.MonkeyPatch, retries: int) -> None:
+    monkeypatch.setenv("LLM_MAX_RETRIES", str(retries))
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None)
+
+
+def test_llm_dotenv_keys_accepted(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "APP_ENV=LOCAL\n"
+        "LOG_LEVEL=INFO\n"
+        "LLM_PROVIDER=DEMO\n"
+        "LLM_MODEL_ID=test-model\n"
+        "LLM_BASE_URL=http://llm.test/v1\n"
+        "LLM_API_KEY=test-secret\n"
+        "LLM_TIMEOUT_SECONDS=60\n"
+        "LLM_MAX_RETRIES=1\n",
+        encoding="utf-8",
+    )
+    settings = Settings(_env_file=str(env_file))
+    assert settings.llm_provider == "DEMO"
+    assert "LLM_PROVIDER" in APPLICATION_DOTENV_KEYS
+    assert "LLM_PROVIDER" in KNOWN_DOTENV_KEYS
+
+
+def test_typo_llm_dotenv_key_fail_fast(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "APP_ENV=LOCAL\nLOG_LEVEL=INFO\nLLM_PROVIDERR=DEMO\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="Unknown settings keys"):
+        Settings(_env_file=str(env_file))
+
+
+def test_run_llm_real_not_in_settings_keys() -> None:
+    assert "RUN_LLM_REAL" not in KNOWN_DOTENV_KEYS
+    assert "RUN_LLM_REAL" not in APPLICATION_DOTENV_KEYS
+    assert "run_llm_real" not in Settings.model_fields
+
+
+def test_llm_api_key_validation_error_hides_secret(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LLM_PROVIDER", "WEIRD")
+    monkeypatch.setenv("LLM_API_KEY", "SUPER_SECRET_TEST_TOKEN")
+    with pytest.raises(ValidationError) as exc_info:
+        Settings(_env_file=None)
+    message = str(exc_info.value)
+    assert "SUPER_SECRET_TEST_TOKEN" not in message

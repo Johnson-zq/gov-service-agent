@@ -1,4 +1,4 @@
-"""Runtime settings: APP_ENV, LOG_LEVEL, optional DATABASE_URL, F06 embedding."""
+"""Runtime settings: APP_ENV, LOG_LEVEL, optional DATABASE_URL, F06 embedding, F07 LLM."""
 
 from __future__ import annotations
 
@@ -6,8 +6,9 @@ from enum import Enum
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Type
+from urllib.parse import urlparse
 
-from pydantic import field_validator, model_validator
+from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import (
     BaseSettings,
     DotEnvSettingsSource,
@@ -48,6 +49,12 @@ KNOWN_DOTENV_KEYS = frozenset(
         "EMBEDDING_DEVICE",
         "RETRIEVAL_TOP_K",
         "RETRIEVAL_MIN_SCORE",
+        "LLM_PROVIDER",
+        "LLM_MODEL_ID",
+        "LLM_BASE_URL",
+        "LLM_API_KEY",
+        "LLM_TIMEOUT_SECONDS",
+        "LLM_MAX_RETRIES",
     }
 )
 
@@ -62,6 +69,12 @@ APPLICATION_DOTENV_KEYS = frozenset(
         "EMBEDDING_DEVICE",
         "RETRIEVAL_TOP_K",
         "RETRIEVAL_MIN_SCORE",
+        "LLM_PROVIDER",
+        "LLM_MODEL_ID",
+        "LLM_BASE_URL",
+        "LLM_API_KEY",
+        "LLM_TIMEOUT_SECONDS",
+        "LLM_MAX_RETRIES",
     }
 )
 
@@ -77,6 +90,12 @@ _APPLICATION_SETTINGS_FIELDS = frozenset(
         "embedding_device",
         "retrieval_top_k",
         "retrieval_min_score",
+        "llm_provider",
+        "llm_model_id",
+        "llm_base_url",
+        "llm_api_key",
+        "llm_timeout_seconds",
+        "llm_max_retries",
     }
 )
 
@@ -136,7 +155,7 @@ class StrictDotEnvSettingsSource(DotEnvSettingsSource):
 
 
 class Settings(BaseSettings):
-    """F01/F05 runtime settings plus optional F06 embedding/retrieval config."""
+    """F01/F05/F06 runtime settings plus optional F07 LLM config."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -156,6 +175,13 @@ class Settings(BaseSettings):
     embedding_device: str = "auto"
     retrieval_top_k: int = 5
     retrieval_min_score: float = 0.50
+
+    llm_provider: str | None = None
+    llm_model_id: str | None = None
+    llm_base_url: str | None = None
+    llm_api_key: SecretStr | None = None
+    llm_timeout_seconds: float = 60.0
+    llm_max_retries: int = 1
 
     @field_validator("app_env", "log_level", mode="before")
     @classmethod
@@ -197,12 +223,43 @@ class Settings(BaseSettings):
         "embedding_provider",
         "embedding_model_id",
         "embedding_model_path",
+        "llm_model_id",
+        "llm_base_url",
         mode="before",
     )
     @classmethod
     def _normalize_optional_str(cls, value: Any) -> Any:
         if value is None:
             return None
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped == "":
+                return None
+            return stripped
+        return value
+
+    @field_validator("llm_provider", mode="before")
+    @classmethod
+    def _normalize_llm_provider(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped == "":
+                return None
+            return stripped.upper()
+        return value
+
+    @field_validator("llm_api_key", mode="before")
+    @classmethod
+    def _normalize_llm_api_key(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        if isinstance(value, SecretStr):
+            secret = value.get_secret_value()
+            if secret is None or str(secret).strip() == "":
+                return None
+            return value
         if isinstance(value, str):
             stripped = value.strip()
             if stripped == "":
@@ -249,6 +306,49 @@ class Settings(BaseSettings):
     def _validate_min_score(cls, value: float) -> float:
         if value < -1.0 or value > 1.0:
             raise ValueError("RETRIEVAL_MIN_SCORE must be between -1.0 and 1.0")
+        return value
+
+    @field_validator("llm_provider", mode="after")
+    @classmethod
+    def _validate_llm_provider(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if value not in {"DEMO", "OPENAI_COMPATIBLE"}:
+            raise ValueError(
+                "LLM_PROVIDER must be DEMO or OPENAI_COMPATIBLE"
+            )
+        return value
+
+    @field_validator("llm_base_url", mode="after")
+    @classmethod
+    def _validate_llm_base_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        parsed = urlparse(value)
+        if parsed.scheme not in {"http", "https"}:
+            raise ValueError("LLM_BASE_URL must use http or https")
+        if not parsed.hostname:
+            raise ValueError("LLM_BASE_URL must include a host")
+        if parsed.username is not None or parsed.password is not None:
+            raise ValueError("LLM_BASE_URL must not include credentials")
+        if parsed.query:
+            raise ValueError("LLM_BASE_URL must not include a query string")
+        if parsed.fragment:
+            raise ValueError("LLM_BASE_URL must not include a fragment")
+        return value
+
+    @field_validator("llm_timeout_seconds", mode="after")
+    @classmethod
+    def _validate_llm_timeout(cls, value: float) -> float:
+        if value < 1.0 or value > 300.0:
+            raise ValueError("LLM_TIMEOUT_SECONDS must be between 1.0 and 300.0")
+        return value
+
+    @field_validator("llm_max_retries", mode="after")
+    @classmethod
+    def _validate_llm_max_retries(cls, value: int) -> int:
+        if value < 0 or value > 3:
+            raise ValueError("LLM_MAX_RETRIES must be between 0 and 3")
         return value
 
     @model_validator(mode="after")
