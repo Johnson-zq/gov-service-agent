@@ -1,5 +1,29 @@
-"""Agent State + LangGraph orchestration foundation (F08)."""
+"""Agent State + LangGraph orchestration foundation (F08) + F09 slot interaction."""
 
+from gov_service_agent.agent.explanation import (
+    ExplanationRequest,
+    ExplanationResult,
+    ExplanationService,
+    ExplanationStatus,
+    LlmExplanationService,
+)
+from gov_service_agent.agent.interaction import (
+    AnswerMapper,
+    AnswerMapperOutput,
+    AnswerMappingRequest,
+    InteractionFailureKind,
+    LlmAnswerMapper,
+    MapperUtteranceKind,
+    MappingPolicy,
+    MappingValidationResult,
+    MappingValidationStatus,
+    SlotInteractionContext,
+    UtteranceInterpretation,
+    UtteranceKind,
+    ValidatedSlot,
+    build_slot_interaction_context,
+    validate_slot_mapping,
+)
 from gov_service_agent.agent.state import (
     AgentPhase,
     AgentState,
@@ -10,17 +34,46 @@ from gov_service_agent.agent.state import (
     create_initial_state,
     validate_agent_state,
 )
-from gov_service_agent.agent.workflow import build_agent_workflow, run_agent_workflow
+from gov_service_agent.agent.workflow import (
+    SlotInteractionDependencies,
+    build_agent_workflow,
+    build_slot_interaction_workflow,
+    run_agent_workflow,
+    run_slot_interaction_workflow,
+)
 
 __all__ = [
     "AgentPhase",
     "AgentState",
     "AgentStateValidationError",
+    "AnswerMapper",
+    "AnswerMapperOutput",
+    "AnswerMappingRequest",
+    "ExplanationRequest",
+    "ExplanationResult",
+    "ExplanationService",
+    "ExplanationStatus",
+    "InteractionFailureKind",
+    "LlmAnswerMapper",
+    "LlmExplanationService",
+    "MapperUtteranceKind",
+    "MappingPolicy",
+    "MappingValidationResult",
+    "MappingValidationStatus",
+    "SlotInteractionContext",
+    "SlotInteractionDependencies",
+    "UtteranceInterpretation",
+    "UtteranceKind",
+    "ValidatedSlot",
     "WorkflowError",
     "WorkflowErrorCode",
     "WorkflowStatus",
     "build_agent_workflow",
+    "build_slot_interaction_context",
+    "build_slot_interaction_workflow",
     "create_initial_state",
     "run_agent_workflow",
+    "run_slot_interaction_workflow",
     "validate_agent_state",
+    "validate_slot_mapping",
 ]
