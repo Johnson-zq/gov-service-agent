@@ -824,3 +824,140 @@ def test_repeated_slot_invocation_isolation():
     assert a["artifacts"]["f09"] is not b["artifacts"]["f09"]
     assert a["request_id"] == "a"
     assert b["request_id"] == "b"
+
+
+# ---------------------------------------------------------------------------
+# F10 specialized terminal-confirmation workflow tests
+# ---------------------------------------------------------------------------
+
+from gov_service_agent.agent import (
+    ConfirmationIntent,
+    ConfirmationStatus,
+    TerminalConfirmationDependencies,
+    build_terminal_candidate_context,
+    build_terminal_confirmation_workflow,
+    prepare_terminal_confirmation,
+    resolve_terminal_confirmation,
+)
+from gov_service_agent.business_data.repository import JsonBusinessRepository
+from gov_service_agent.business_graph.transition import advance_until_blocked
+
+DEMO_SS_001_PATH = REPO_ROOT / "data" / "demo" / "demo_ss_001.json"
+
+
+def _f10_terminal_context():
+    graph = load_decision_graph(GRAPH_PATH)
+    result = advance_until_blocked(
+        graph,
+        "social_security_entry",
+        {
+            "service_action": "payment",
+            "payment_actor": "self_payment",
+            "employment_type": "other_flexible_employment",
+        },
+    )
+    return build_terminal_candidate_context(result)
+
+
+def _f10_deps() -> TerminalConfirmationDependencies:
+    return TerminalConfirmationDependencies(
+        business_repository=JsonBusinessRepository.from_paths([DEMO_SS_001_PATH])
+    )
+
+
+def test_build_terminal_confirmation_workflow_compiles():
+    compiled = build_terminal_confirmation_workflow(_f10_deps())
+    assert compiled is not None
+    # F08 default builder remains intact
+    assert build_agent_workflow() is not None
+
+
+def test_f10_prepare_workflow_path_no_interpret_finalize():
+    final = prepare_terminal_confirmation(
+        create_initial_state("f10-prep", "确认"),
+        _f10_terminal_context(),
+        _f10_deps(),
+    )
+    trace = final["orchestration_trace"]
+    assert "prepare" in trace
+    assert "validate_terminal_candidate" in trace
+    assert "compose_terminal_response" in trace
+    assert "complete" in trace
+    assert "interpret_confirmation" not in trace
+    assert "finalize_confirmation" not in trace
+    assert final["artifacts"]["f10"]["confirmation"]["status"] == (
+        ConfirmationStatus.AWAITING_CONFIRMATION.value
+    )
+
+
+def test_f10_resolve_confirm_workflow_path():
+    final = resolve_terminal_confirmation(
+        create_initial_state("f10-ok", "确认"),
+        _f10_terminal_context(),
+        _f10_deps(),
+    )
+    trace = final["orchestration_trace"]
+    assert "validate_terminal_candidate" in trace
+    assert "interpret_confirmation" in trace
+    assert "finalize_confirmation" in trace
+    assert "compose_terminal_response" in trace
+    assert "complete" in trace
+    assert final["artifacts"]["f10"]["confirmed_business_id"] == "DEMO_SS_001"
+
+
+def test_f10_resolve_reject_skips_finalize():
+    final = resolve_terminal_confirmation(
+        create_initial_state("f10-rej", "不是这个"),
+        _f10_terminal_context(),
+        _f10_deps(),
+    )
+    assert "finalize_confirmation" not in final["orchestration_trace"]
+    assert final["artifacts"]["f10"]["confirmation"]["intent"] == (
+        ConfirmationIntent.REJECTED.value
+    )
+    assert final["artifacts"]["f10"]["confirmed_business_id"] is None
+
+
+def test_f10_resolve_uncertain_skips_finalize():
+    final = resolve_terminal_confirmation(
+        create_initial_state("f10-unc", "好像是吧"),
+        _f10_terminal_context(),
+        _f10_deps(),
+    )
+    assert "finalize_confirmation" not in final["orchestration_trace"]
+    assert final["artifacts"]["f10"]["confirmation"]["status"] == (
+        ConfirmationStatus.UNCERTAIN.value
+    )
+
+
+def test_f10_blocked_skips_interpret_and_finalize(monkeypatch: pytest.MonkeyPatch):
+    class GoneRepo:
+        def has_business(self, business_id: str) -> bool:
+            return False
+
+        def get_business(self, business_id: str):  # type: ignore[no-untyped-def]
+            raise AssertionError("unreachable")
+
+    def _boom(user_text: str):  # type: ignore[no-untyped-def]
+        raise AssertionError("parser unreachable when blocked")
+
+    monkeypatch.setattr(
+        "gov_service_agent.agent.nodes.interpret_confirmation",
+        _boom,
+    )
+    final = resolve_terminal_confirmation(
+        create_initial_state("f10-block", "确认"),
+        _f10_terminal_context(),
+        TerminalConfirmationDependencies(business_repository=GoneRepo()),
+    )
+    assert "interpret_confirmation" not in final["orchestration_trace"]
+    assert "finalize_confirmation" not in final["orchestration_trace"]
+    assert final["artifacts"]["f10"]["confirmed_business_id"] is None
+
+
+def test_f08_default_workflow_unaffected_by_f10():
+    final = run_agent_workflow(
+        create_initial_state("f08-still", "synthetic workflow input")
+    )
+    assert final["orchestration_trace"] == ["prepare", "complete"]
+    assert "f10" not in final["artifacts"]

@@ -42,6 +42,26 @@ from gov_service_agent.agent.state import (
     WorkflowStatus,
     validate_agent_state,
 )
+from gov_service_agent.agent.terminal import (
+    ConfirmationIntent,
+    ConfirmationStatus,
+    TerminalConfirmationMode,
+    TerminalValidationStatus,
+    assign_confirmed_business_id,
+    build_terminal_failure,
+    compose_terminal_response_text,
+    deserialize_rule_readiness,
+    deserialize_terminal_context,
+    deserialize_terminal_validation,
+    interpret_confirmation,
+    merge_f10_artifacts,
+    read_f10,
+    serialize_confirmation,
+    serialize_failure,
+    serialize_rule_readiness,
+    serialize_terminal_validation,
+    validate_terminal_candidate,
+)
 from gov_service_agent.business_graph.transition import (
     TransitionStatus,
     advance_until_blocked,
@@ -77,6 +97,18 @@ def _f09_partial(
 ) -> dict[str, Any]:
     return {
         "artifacts": merge_f09_artifacts(state["artifacts"], f09_update),
+        "orchestration_trace": [trace],
+    }
+
+
+def _f10_partial(
+    state: AgentState,
+    f10_update: dict[str, Any],
+    *,
+    trace: str,
+) -> dict[str, Any]:
+    return {
+        "artifacts": merge_f10_artifacts(state["artifacts"], f10_update),
         "orchestration_trace": [trace],
     }
 
@@ -388,4 +420,248 @@ def _resume_current_slot_node(state: AgentState) -> dict[str, Any]:
         state,
         {"response_text": response},
         trace="resume_current_slot",
+    )
+
+
+# ---------------------------------------------------------------------------
+# F10 Terminal Confirmation nodes / routers (private)
+# ---------------------------------------------------------------------------
+
+
+def _read_f10_validation(state: AgentState):
+    f10 = read_f10(state["artifacts"])
+    validation_payload = f10.get("terminal_validation")
+    if not isinstance(validation_payload, dict):
+        raise AgentStateValidationError("f10.terminal_validation is required")
+    readiness = deserialize_rule_readiness(f10.get("rule_readiness"))
+    return deserialize_terminal_validation(
+        validation_payload,
+        rule_readiness=readiness,
+    )
+
+
+def _make_validate_terminal_candidate_node(
+    deps: Any,
+) -> Callable[[AgentState], dict[str, Any]]:
+    def _validate_terminal_candidate_node(state: AgentState) -> dict[str, Any]:
+        validate_agent_state(state)
+        f10 = read_f10(state["artifacts"])
+        context_payload = f10.get("terminal_context")
+        if not isinstance(context_payload, dict):
+            raise AgentStateValidationError("f10.terminal_context is required")
+        context = deserialize_terminal_context(context_payload)
+        validation = validate_terminal_candidate(context, deps)
+
+        if validation.status == TerminalValidationStatus.READY_FOR_CONFIRMATION:
+            confirmation_status = ConfirmationStatus.AWAITING_CONFIRMATION
+            failure = None
+        else:
+            confirmation_status = ConfirmationStatus.BLOCKED
+            failure = build_terminal_failure(
+                validation.status,
+                canonical_name=validation.canonical_name,
+            )
+
+        return _f10_partial(
+            state,
+            {
+                "terminal_validation": serialize_terminal_validation(validation),
+                "rule_readiness": serialize_rule_readiness(
+                    validation.rule_readiness
+                ),
+                "confirmation": serialize_confirmation(
+                    status=confirmation_status,
+                    intent=None,
+                ),
+                "confirmed_business_id": None,
+                "failure": serialize_failure(failure),
+            },
+            trace="validate_terminal_candidate",
+        )
+
+    return _validate_terminal_candidate_node
+
+
+def _route_by_terminal_validation(state: AgentState) -> str:
+    f10 = read_f10(state["artifacts"])
+    validation = f10.get("terminal_validation")
+    if not isinstance(validation, dict):
+        raise AgentStateValidationError("f10.terminal_validation is required")
+    status = validation.get("status")
+    if status != TerminalValidationStatus.READY_FOR_CONFIRMATION.value:
+        return "compose_terminal_response"
+    # Mode router (pure): PREPARE → compose; RESOLVE → interpret.
+    return _route_by_terminal_mode(state)
+
+
+def _route_by_terminal_mode(state: AgentState) -> str:
+    f10 = read_f10(state["artifacts"])
+    mode = f10.get("mode")
+    if mode == TerminalConfirmationMode.PREPARE.value:
+        return "compose_terminal_response"
+    if mode == TerminalConfirmationMode.RESOLVE.value:
+        return "interpret_confirmation"
+    raise AgentStateValidationError("unsupported f10.mode")
+
+
+def _interpret_confirmation_node(state: AgentState) -> dict[str, Any]:
+    validate_agent_state(state)
+    f10 = read_f10(state["artifacts"])
+    if f10.get("mode") != TerminalConfirmationMode.RESOLVE.value:
+        raise AgentStateValidationError(
+            "interpret_confirmation requires RESOLVE mode"
+        )
+    validation = _read_f10_validation(state)
+    if validation.status != TerminalValidationStatus.READY_FOR_CONFIRMATION:
+        raise AgentStateValidationError(
+            "interpret_confirmation requires READY_FOR_CONFIRMATION"
+        )
+
+    intent = interpret_confirmation(state["input_text"])
+    if intent == ConfirmationIntent.CONFIRMED:
+        confirmation_status = ConfirmationStatus.CONFIRMED
+    elif intent == ConfirmationIntent.REJECTED:
+        confirmation_status = ConfirmationStatus.REJECTED
+    else:
+        confirmation_status = ConfirmationStatus.UNCERTAIN
+
+    return _f10_partial(
+        state,
+        {
+            "confirmation": serialize_confirmation(
+                status=confirmation_status,
+                intent=intent,
+            ),
+            "confirmed_business_id": None,
+            "failure": None,
+        },
+        trace="interpret_confirmation",
+    )
+
+
+def _route_by_confirmation_intent(state: AgentState) -> str:
+    f10 = read_f10(state["artifacts"])
+    confirmation = f10.get("confirmation")
+    if not isinstance(confirmation, dict):
+        raise AgentStateValidationError("f10.confirmation is required")
+    intent = confirmation.get("intent")
+    if intent == ConfirmationIntent.CONFIRMED.value:
+        return "finalize_confirmation"
+    if intent in (
+        ConfirmationIntent.REJECTED.value,
+        ConfirmationIntent.UNCERTAIN.value,
+    ):
+        return "compose_terminal_response"
+    raise AgentStateValidationError("unsupported confirmation intent")
+
+
+def _finalize_confirmation_node(state: AgentState) -> dict[str, Any]:
+    validate_agent_state(state)
+    f10 = read_f10(state["artifacts"])
+    context_payload = f10.get("terminal_context")
+    if not isinstance(context_payload, dict):
+        raise AgentStateValidationError("f10.terminal_context is required")
+    context = deserialize_terminal_context(context_payload)
+    validation = _read_f10_validation(state)
+    confirmation = f10.get("confirmation")
+    if not isinstance(confirmation, dict):
+        raise AgentStateValidationError("f10.confirmation is required")
+    intent_raw = confirmation.get("intent")
+    if intent_raw != ConfirmationIntent.CONFIRMED.value:
+        raise AgentStateValidationError(
+            "finalize_confirmation requires CONFIRMED intent"
+        )
+    intent = ConfirmationIntent.CONFIRMED
+
+    confirmed = assign_confirmed_business_id(
+        validation=validation,
+        intent=intent,
+        candidate_business_id=context.candidate_business_id,
+    )
+    if confirmed is None:
+        raise AgentStateValidationError(
+            "finalize_confirmation defense-in-depth rejected assignment"
+        )
+
+    return _f10_partial(
+        state,
+        {
+            "confirmation": serialize_confirmation(
+                status=ConfirmationStatus.CONFIRMED,
+                intent=intent,
+            ),
+            "confirmed_business_id": confirmed,
+            "failure": None,
+        },
+        trace="finalize_confirmation",
+    )
+
+
+def _compose_terminal_response_node(state: AgentState) -> dict[str, Any]:
+    validate_agent_state(state)
+    f10 = read_f10(state["artifacts"])
+    mode_raw = f10.get("mode")
+    if mode_raw not in (
+        TerminalConfirmationMode.PREPARE.value,
+        TerminalConfirmationMode.RESOLVE.value,
+    ):
+        raise AgentStateValidationError("f10.mode is required")
+    mode = TerminalConfirmationMode(mode_raw)
+    validation = _read_f10_validation(state)
+    confirmation = f10.get("confirmation")
+    if not isinstance(confirmation, dict):
+        raise AgentStateValidationError("f10.confirmation is required")
+    status = ConfirmationStatus(confirmation["status"])
+    intent_raw = confirmation.get("intent")
+    intent = (
+        ConfirmationIntent(intent_raw) if isinstance(intent_raw, str) else None
+    )
+
+    # PREPARE + READY must surface AWAITING even if confirmation was left blocked
+    # only briefly; validate node already sets AWAITING for READY.
+    if (
+        mode == TerminalConfirmationMode.PREPARE
+        and validation.status
+        == TerminalValidationStatus.READY_FOR_CONFIRMATION
+    ):
+        status = ConfirmationStatus.AWAITING_CONFIRMATION
+        intent = None
+
+    response_text = compose_terminal_response_text(
+        mode=mode,
+        validation=validation,
+        confirmation_status=status,
+        confirmation_intent=intent,
+    )
+
+    failure_payload = f10.get("failure")
+    if status in (
+        ConfirmationStatus.REJECTED,
+        ConfirmationStatus.UNCERTAIN,
+        ConfirmationStatus.AWAITING_CONFIRMATION,
+        ConfirmationStatus.CONFIRMED,
+    ):
+        failure_payload = None
+    elif (
+        status == ConfirmationStatus.BLOCKED
+        and failure_payload is None
+        and validation.status != TerminalValidationStatus.READY_FOR_CONFIRMATION
+    ):
+        failure = build_terminal_failure(
+            validation.status,
+            canonical_name=validation.canonical_name,
+        )
+        failure_payload = serialize_failure(failure)
+
+    return _f10_partial(
+        state,
+        {
+            "confirmation": serialize_confirmation(
+                status=status,
+                intent=intent,
+            ),
+            "failure": failure_payload,
+            "response_text": response_text,
+        },
+        trace="compose_terminal_response",
     )

@@ -1,4 +1,4 @@
-"""Agent State + LangGraph orchestration foundation (F08) + F09 slot interaction."""
+"""Agent State + LangGraph orchestration (F08) + F09 slots + F10 terminal."""
 
 from gov_service_agent.agent.explanation import (
     ExplanationRequest,
@@ -34,10 +34,27 @@ from gov_service_agent.agent.state import (
     create_initial_state,
     validate_agent_state,
 )
+from gov_service_agent.agent.terminal import (
+    BusinessRepositoryReader,
+    ConfirmationIntent,
+    ConfirmationStatus,
+    RuleReadinessSnapshot,
+    TerminalCandidateContext,
+    TerminalConfirmationDependencies,
+    TerminalConfirmationFailureKind,
+    TerminalValidationResult,
+    TerminalValidationStatus,
+    build_terminal_candidate_context,
+    interpret_confirmation,
+    terminal_candidate_context_from_business_transition,
+)
 from gov_service_agent.agent.workflow import (
     SlotInteractionDependencies,
     build_agent_workflow,
     build_slot_interaction_workflow,
+    build_terminal_confirmation_workflow,
+    prepare_terminal_confirmation,
+    resolve_terminal_confirmation,
     run_agent_workflow,
     run_slot_interaction_workflow,
 )
@@ -49,6 +66,9 @@ __all__ = [
     "AnswerMapper",
     "AnswerMapperOutput",
     "AnswerMappingRequest",
+    "BusinessRepositoryReader",
+    "ConfirmationIntent",
+    "ConfirmationStatus",
     "ExplanationRequest",
     "ExplanationResult",
     "ExplanationService",
@@ -60,8 +80,14 @@ __all__ = [
     "MappingPolicy",
     "MappingValidationResult",
     "MappingValidationStatus",
+    "RuleReadinessSnapshot",
     "SlotInteractionContext",
     "SlotInteractionDependencies",
+    "TerminalCandidateContext",
+    "TerminalConfirmationDependencies",
+    "TerminalConfirmationFailureKind",
+    "TerminalValidationResult",
+    "TerminalValidationStatus",
     "UtteranceInterpretation",
     "UtteranceKind",
     "ValidatedSlot",
@@ -71,9 +97,15 @@ __all__ = [
     "build_agent_workflow",
     "build_slot_interaction_context",
     "build_slot_interaction_workflow",
+    "build_terminal_candidate_context",
+    "build_terminal_confirmation_workflow",
     "create_initial_state",
+    "interpret_confirmation",
+    "prepare_terminal_confirmation",
+    "resolve_terminal_confirmation",
     "run_agent_workflow",
     "run_slot_interaction_workflow",
+    "terminal_candidate_context_from_business_transition",
     "validate_agent_state",
     "validate_slot_mapping",
 ]
