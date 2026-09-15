@@ -55,6 +55,19 @@ KNOWN_DOTENV_KEYS = frozenset(
         "LLM_API_KEY",
         "LLM_TIMEOUT_SECONDS",
         "LLM_MAX_RETRIES",
+        "REDIS_HOST",
+        "REDIS_PORT",
+        "REDIS_DB",
+        "REDIS_USERNAME",
+        "REDIS_PASSWORD",
+        "REDIS_KEY_PREFIX",
+        "SESSION_TTL_SECONDS",
+        "SESSION_EXPIRED_MARKER_TTL_SECONDS",
+        "AUDIT_TTL_SECONDS",
+        "REQUEST_DEDUP_TTL_SECONDS",
+        "REQUEST_LOCK_TTL_SECONDS",
+        "SESSION_LOCK_TTL_SECONDS",
+        "SESSION_MAX_INPUT_CHARS",
     }
 )
 
@@ -75,6 +88,19 @@ APPLICATION_DOTENV_KEYS = frozenset(
         "LLM_API_KEY",
         "LLM_TIMEOUT_SECONDS",
         "LLM_MAX_RETRIES",
+        "REDIS_HOST",
+        "REDIS_PORT",
+        "REDIS_DB",
+        "REDIS_USERNAME",
+        "REDIS_PASSWORD",
+        "REDIS_KEY_PREFIX",
+        "SESSION_TTL_SECONDS",
+        "SESSION_EXPIRED_MARKER_TTL_SECONDS",
+        "AUDIT_TTL_SECONDS",
+        "REQUEST_DEDUP_TTL_SECONDS",
+        "REQUEST_LOCK_TTL_SECONDS",
+        "SESSION_LOCK_TTL_SECONDS",
+        "SESSION_MAX_INPUT_CHARS",
     }
 )
 
@@ -96,6 +122,19 @@ _APPLICATION_SETTINGS_FIELDS = frozenset(
         "llm_api_key",
         "llm_timeout_seconds",
         "llm_max_retries",
+        "redis_host",
+        "redis_port",
+        "redis_db",
+        "redis_username",
+        "redis_password",
+        "redis_key_prefix",
+        "session_ttl_seconds",
+        "session_expired_marker_ttl_seconds",
+        "audit_ttl_seconds",
+        "request_dedup_ttl_seconds",
+        "request_lock_ttl_seconds",
+        "session_lock_ttl_seconds",
+        "session_max_input_chars",
     }
 )
 
@@ -155,7 +194,7 @@ class StrictDotEnvSettingsSource(DotEnvSettingsSource):
 
 
 class Settings(BaseSettings):
-    """F01/F05/F06 runtime settings plus optional F07 LLM config."""
+    """F01/F05/F06/F07 runtime settings plus F11 Redis/session config."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -182,6 +221,20 @@ class Settings(BaseSettings):
     llm_api_key: SecretStr | None = None
     llm_timeout_seconds: float = 60.0
     llm_max_retries: int = 1
+
+    redis_host: str = "127.0.0.1"
+    redis_port: int = 6379
+    redis_db: int = 0
+    redis_username: str | None = None
+    redis_password: SecretStr | None = None
+    redis_key_prefix: str = "govagent:f11"
+    session_ttl_seconds: int = 1800
+    session_expired_marker_ttl_seconds: int = 86400
+    audit_ttl_seconds: int = 604800
+    request_dedup_ttl_seconds: int = 600
+    request_lock_ttl_seconds: int = 120
+    session_lock_ttl_seconds: int = 120
+    session_max_input_chars: int = 4000
 
     @field_validator("app_env", "log_level", mode="before")
     @classmethod
@@ -349,6 +402,88 @@ class Settings(BaseSettings):
     def _validate_llm_max_retries(cls, value: int) -> int:
         if value < 0 or value > 3:
             raise ValueError("LLM_MAX_RETRIES must be between 0 and 3")
+        return value
+
+    @field_validator(
+        "redis_username",
+        "redis_key_prefix",
+        mode="before",
+    )
+    @classmethod
+    def _normalize_redis_optional_str(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped == "":
+                return None
+            return stripped
+        return value
+
+    @field_validator("redis_host", mode="before")
+    @classmethod
+    def _normalize_redis_host(cls, value: Any) -> Any:
+        if value is None:
+            return "127.0.0.1"
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped == "":
+                return "127.0.0.1"
+            return stripped
+        return value
+
+    @field_validator("redis_password", mode="before")
+    @classmethod
+    def _normalize_redis_password(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        if isinstance(value, SecretStr):
+            secret = value.get_secret_value()
+            if secret is None or str(secret).strip() == "":
+                return None
+            return value
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped == "":
+                return None
+            return stripped
+        return value
+
+    @field_validator("redis_key_prefix", mode="after")
+    @classmethod
+    def _validate_redis_key_prefix(cls, value: str | None) -> str:
+        if value is None or value.strip() == "":
+            raise ValueError("REDIS_KEY_PREFIX must be a non-empty str")
+        return value.strip().rstrip(":")
+
+    @field_validator("redis_port", mode="after")
+    @classmethod
+    def _validate_redis_port(cls, value: int) -> int:
+        if value < 1 or value > 65535:
+            raise ValueError("REDIS_PORT must be between 1 and 65535")
+        return value
+
+    @field_validator("redis_db", mode="after")
+    @classmethod
+    def _validate_redis_db(cls, value: int) -> int:
+        if value < 0 or value > 15:
+            raise ValueError("REDIS_DB must be between 0 and 15")
+        return value
+
+    @field_validator(
+        "session_ttl_seconds",
+        "session_expired_marker_ttl_seconds",
+        "audit_ttl_seconds",
+        "request_dedup_ttl_seconds",
+        "request_lock_ttl_seconds",
+        "session_lock_ttl_seconds",
+        "session_max_input_chars",
+        mode="after",
+    )
+    @classmethod
+    def _validate_positive_session_ints(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError("session-related integer settings must be >= 1")
         return value
 
     @model_validator(mode="after")
