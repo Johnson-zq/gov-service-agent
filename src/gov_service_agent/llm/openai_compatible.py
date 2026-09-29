@@ -16,6 +16,7 @@ from gov_service_agent.llm.types import (
     LlmRequest,
     LlmResponse,
     LlmRole,
+    RemoteDataPolicyProfile,
 )
 
 logger = logging.getLogger("gov_service_agent")
@@ -40,6 +41,9 @@ class OpenAICompatibleLlmProvider:
         model_id: str,
         timeout_seconds: float = 60.0,
         max_retries: int = 1,
+        remote_data_policy_profile: RemoteDataPolicyProfile = (
+            RemoteDataPolicyProfile.DEFAULT
+        ),
         client: httpx.Client | None = None,
         sleep_fn: Callable[[float], None] | None = None,
     ) -> None:
@@ -51,11 +55,14 @@ class OpenAICompatibleLlmProvider:
             raise ValueError("model_id must be non-empty")
         if max_retries < 0 or max_retries > 3:
             raise ValueError("max_retries must be between 0 and 3")
+        if not isinstance(remote_data_policy_profile, RemoteDataPolicyProfile):
+            raise ValueError("remote_data_policy_profile must be RemoteDataPolicyProfile")
         self._base_url = str(base_url).strip().rstrip("/")
         self._api_key = str(api_key).strip()
         self._model_id = str(model_id).strip()
         self._timeout_seconds = float(timeout_seconds)
         self._max_retries = int(max_retries)
+        self._remote_data_policy_profile = remote_data_policy_profile
         self._external_client = client
         self._sleep_fn = sleep_fn if sleep_fn is not None else time.sleep
 
@@ -68,7 +75,10 @@ class OpenAICompatibleLlmProvider:
         return self._model_id
 
     def complete(self, request: LlmRequest) -> LlmResponse:
-        decision = evaluate_request_remote_policy(request)
+        decision = evaluate_request_remote_policy(
+            request,
+            profile=self._remote_data_policy_profile,
+        )
         if not decision.allowed:
             denied = ",".join(sorted(c.value for c in decision.denied_categories))
             logger.info(

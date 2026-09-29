@@ -6,15 +6,42 @@
 |------|------|
 | Feature ID | F07 |
 | Feature Name | LLM Abstraction + Demo Provider + Real Company Provider + Data Policy |
-| Current Stage | **Commit — AWAITING COMMIT（Code-Reading COMPLETE）** |
+| Original F07 | **CLOSED** @ `3b6872657fc4c6a74f74a1432fa2818707476a89`（`feat(F07): 建立LLM提供方与远程数据安全边界`） |
+| Current Stage | **POLICY REOPEN — CODE-READING COMPLETE / AWAITING COMMIT AUTHORIZATION** |
+| Policy Reopen Resource Gate | **READY**（Owner Demo Policy Decision Integrated） |
 | 前置 Feature | F06 — Embedding + Semantic Retrieval（CLOSED @ `4a8bb61`） |
-| Git Baseline | `develop` @ `4a8bb61c1a9618e010352ece36ac72d5be0aabfc` |
-| External Resource Gate | **CLOSED** |
+| Git Baseline（本 Reopen Requirement） | `develop` @ `894e39426d5e8b9b3bd2dc81e3b4ac40569c42c5` |
+| Original Git Baseline（历史） | `develop` @ `4a8bb61c1a9618e010352ece36ac72d5be0aabfc`（见下方 Original Stage Status） |
+| External Resource Gate（原） | **CLOSED** |
 | Real Provider Scope | **B**（Abstraction + Demo + Real Company Provider + Data Policy + Real Connectivity Smoke） |
 | Requirement Document | `docs/features/F07-llm-provider-data-policy.md` |
 | Code-Reading Document | `docs/code-reading/F07-llm-provider-data-policy-code-reading.md` |
 
-### Stage Status
+### Current Stage Status（Policy Reopen）
+
+| 阶段 | 状态 |
+|------|------|
+| Original F07 | **CLOSED** |
+| Policy Reopen Resource Gate | **READY** |
+| Policy Reopen Requirement | **COMPLETE** |
+| Policy Reopen Requirement Finalization | **NOT REQUIRED** |
+| Policy Reopen Technical Design | **COMPLETE** |
+| Policy Reopen Technical Design Finalization | **NOT REQUIRED** |
+| Policy Reopen Confirm | **COMPLETE** |
+| Policy Reopen Code | **COMPLETE** |
+| Policy Reopen Test | **PASS**（620 passed / 13 skipped / 0 failed / 0 warnings） |
+| Policy Reopen Review | **PASS**（BLOCKING/MAJOR/MINOR = 0；INFO = 3） |
+| Policy Reopen Review Fix | **NOT REQUIRED** |
+| Policy Reopen Explanation | **COMPLETE** |
+| Policy Reopen Code-Reading Update | **COMPLETE** |
+| Policy Reopen Commit | **AWAITING OWNER AUTHORIZATION** |
+| F12 Resource Gate | **仍 BLOCKED**（RG-F12-004 PENDING；RG-F12-006 = POLICY IMPLEMENTATION REVIEW PASS / RUNTIME VALIDATION PENDING） |
+
+**本阶段范围：** Code-Reading Update 已完成。**禁止**自动 Commit / Push / 进入 F12。
+
+> **RI-F07R-001 disposition：** Feature Doc stage 已同步至 Confirm→Code-Reading COMPLETE / AWAITING COMMIT。Original F07 CLOSED 历史保留不删。### Original Stage Status（历史快照 — 原 F07 CLOSED；保留不删）
+
+> 说明：原文档表头曾长期残留「Commit — AWAITING COMMIT / Push NOT STARTED」字样（后续 Feature 已记录为 docs drift）。实际 Original F07 已于 commit `3b68726…` **CLOSED**（含 Push）。下表保留原阶段完成事实，不改写为「从未完成」。
 
 | 阶段 | 状态 |
 |------|------|
@@ -30,16 +57,12 @@
 | Review Fix | **NOT REQUIRED** |
 | Explanation | **COMPLETE** |
 | Code-Reading | **COMPLETE**（Owner-approved 第 18 path） |
-| Commit | **AWAITING COMMIT** |
-| Push | **NOT STARTED** |
+| Commit | **COMPLETE** @ `3b6872657fc4c6a74f74a1432fa2818707476a89` |
+| Push | **COMPLETE** |
 
-**本阶段范围：** Code-Reading 文档（Owner-approved docs-only scope exception）+ Commit。
+**原 Feature Scope：** **18 paths**（原 17 + 1 Code-Reading；非 Production/Test/Design Deviation）。
 
-**最终 Feature Scope：** **18 paths**（原 17 + 1 Code-Reading；非 Production/Test/Design Deviation）。
-
-**明确禁止自动进入：** Push。
-
-**Review：** PASS；BLOCKING/MAJOR/MINOR = 0；INFO = 3；Review Fix = NOT REQUIRED。
+**原 Review：** PASS；BLOCKING/MAJOR/MINOR = 0；INFO = 3；Review Fix = NOT REQUIRED。
 
 ### Final F07 Paths（18）
 
@@ -485,6 +508,8 @@ F07 必须能区分至少以下失败类型（具体 Error Enum：**DESIGN LATER
 | **AC-F07-36** | 不新增 LLM public HTTP endpoint |
 | **AC-F07-37** | 不新增 PostgreSQL migration / Redis / LangGraph / ASR |
 | **AC-F07-38** | EmbeddingProvider 与 LLM Provider 保持独立 |
+
+> **Policy Reopen 注记：** 上表原 AC-F07-01…38 **全部保留**。尤其 **AC-F07-19**（真实 USER_FREE_TEXT 当前 Remote Deny）继续描述 **Default / Non-Demo** 行为。Demo Profile 例外见文末 **Policy Reopen Requirement → AC-F07-39…58**。
 
 ---
 
@@ -1584,3 +1609,890 @@ Explanation 阶段 **未**修改 Production / Tests；**未**运行 pytest / Rea
 Feature Scope 仍严格 **17 paths**（本 Explanation 仅更新已存在的本 Feature 文档）。
 
 **Commit / Push = NOT STARTED** — 须等待 Owner 单独授权。
+
+> **历史注记（Policy Reopen）：** 上表与本 EX-20 表述保留原 Explanation 当时快照。Original F07 随后已 Commit/Push **COMPLETE** @ `3b68726…`。下文为 Policy Reopen Requirement Addendum，不改写上述历史正文。
+
+---
+
+# Policy Reopen Requirement（Addendum）
+
+| 字段 | 内容 |
+|------|------|
+| Reopen ID | F07-POLICY-REOPEN |
+| Stage | **REQUIREMENT — COMPLETE** |
+| Requirement Finalization | **NOT REQUIRED** |
+| Resource Gate | **READY**（prior） |
+| Authorization | Owner 正式授权：F07 POLICY REOPEN — REQUIREMENT |
+| Policy Approval Status | **APPROVED** |
+| Policy Approval Source | **OWNER_EXPLICIT_DEMO_POLICY_DECISION** |
+| Based on | Original F07 CLOSED + Policy Reopen Resource Gate READY + Owner Demo Policy Decision |
+| Document change scope | 仅本 Feature Doc；**不**修改 Code-Reading / Production / Tests |
+| Next | Technical Design Reopen — **须等待 Owner 明确授权**；本阶段 **STOP** |
+
+## PR-1. Reopen 背景与原因
+
+Original F07 Remote Data Policy 采用 **fail-closed**：
+
+- Remote Provider 遇到真实 `USER_FREE_TEXT` → **DENY**
+- 核心历史 Acceptance Criterion：**AC-F07-19**（保留，不删除、不改号、不改写为「过去一直允许」）
+
+F09 需要 `LlmAnswerMapper` 将用户自然语言（例如「平时接零活，没有固定单位」）映射到受控枚举（例如 `employment_type = other_flexible_employment`）并返回 `confidence`。F09 **不拥有**修改 F07 Policy 的权限（见 **OI-F09-DP-001**，本阶段 **不关闭** 该 OI；仅记录其为本次 Reopen 来源之一）。
+
+因此 F12 E2E 被 **RG-F12-006** 阻塞。本次 Reopen 正式落地 Owner 已批准的 Demo 阶段数据策略例外。
+
+## PR-2. Owner Demo Policy Decision（正式记录）
+
+当前项目处于 **Demo 阶段**。
+
+**允许：** 将用户在政务 Agent 中输入的**业务信息**发送给公司指定的远程 LLM 进行业务处理。Owner 明确允许的业务分类包括：
+
+| Classification | Demo Profile Remote |
+|----------------|---------------------|
+| `PUBLIC_BUSINESS_METADATA` | ALLOW |
+| `SYSTEM_CONTROL_DATA` | ALLOW |
+| `SYNTHETIC_TEST_DATA` | ALLOW |
+| `USER_FREE_TEXT` | ALLOW |
+| `USER_PII` | ALLOW |
+| `HIGH_SENSITIVE_IDENTITY` | ALLOW |
+| `TO_CONFIRM_OR_INTERNAL` | ALLOW |
+
+以上属于 **Demo 用户业务数据**。
+
+**明确不属于授权范围：** 系统 Secret / Credential。以下内容**不得**进入 LLM Prompt / `messages` / business payload：
+
+- `LLM_API_KEY`
+- Authorization Header / Bearer Token
+- 数据库密码 / Redis 密码
+- 系统访问令牌
+- Secret / Credential / 其它运行时认证凭据
+
+Transport Authentication（例如 HTTP `Authorization: Bearer …`）属于 Provider 传输认证，**不是**业务 payload。
+
+## PR-3. Reopen 目标（不是全局取消 Policy）
+
+目标 **不是** 全局永久取消 F07 Remote Policy，也 **不是** 永久全局 `USER_FREE_TEXT` ALLOW。
+
+目标是新增一个 **显式 Demo Remote Data Policy Profile**：
+
+| Profile 语义 | 行为 |
+|--------------|------|
+| **DEFAULT / NON-DEMO** | 保持原 F07 Remote **fail-closed** 行为完全兼容 |
+| **EXPLICIT DEMO** | 允许 Owner 已批准的 Demo 用户业务数据进入**当前显式配置的** Remote LLM Provider |
+| `UNKNOWN` | **始终 DENY**（含 Demo Profile 开启时） |
+| Secret / Credential | **永不**进入 LLM business payload |
+
+字段名 / enum 名 / Settings 键名 **不在 Requirement 冻结**（留给 Technical Design）。
+
+## PR-4. 核心概念分离（硬 Requirement）
+
+1. **Demo Policy Profile ≠ `DemoLlmProvider`**
+   Demo Profile 只决定哪些业务数据允许 Remote Dispatch。F12 后续必须能使用真实 `OPENAI_COMPATIBLE` Provider。
+
+2. **`OPENAI_COMPATIBLE` 仅是 Provider protocol / adapter type**
+   不得因协议类型自动获得 Demo data approval。放行必须来自显式 Policy Profile。
+
+3. **显式选择原则**
+   Demo Profile 必须由 Deployment / Owner **显式选择**。禁止根据 URL、域名、IP、localhost、公司域名 substring、或「模型部署在公司服务器」隐式切换。
+
+4. **Profile 不得由 content 推断**
+   不得根据 `user_text` / prompt / 关键词自动选择 Profile。Profile 必须来自明确 deployment/runtime configuration。
+
+5. **禁止万能 bypass**
+   不得通过 `TRUSTED=true` / `ALLOW_ALL=true` / `SKIP_POLICY=true` 等万能开关绕过 Policy。必须表达明确 Policy Profile。
+
+## PR-5. Default Profile 行为兼容（硬 Requirement）
+
+未显式选择 Demo Profile 时，原 F07 Policy **必须保持行为兼容**，尤其：
+
+| Classification | Default / Non-Demo |
+|----------------|--------------------|
+| `USER_FREE_TEXT` | **DENY**（与 **AC-F07-19** 一致） |
+| `USER_PII` | **DENY** |
+| `HIGH_SENSITIVE_IDENTITY` | **DENY** |
+| `TO_CONFIRM_OR_INTERNAL` | **DENY**（按原 F07） |
+| `UNKNOWN` | **DENY** |
+| `PUBLIC_BUSINESS_METADATA` | 按原行为（ALLOW） |
+| `SYSTEM_CONTROL_DATA` | 按原行为（ALLOW） |
+| `SYNTHETIC_TEST_DATA` | 按原行为（ALLOW） |
+
+不得为了 Demo 改变 Default Policy。
+
+**缺失 Demo Profile 时不得自动放行：** 不得因 `AppEnv=dev`、`provider=OPENAI_COMPATIBLE`、存在 API key、endpoint 可访问等隐式进入 Demo Allow。
+
+**无效 / 未识别 Profile：** 永远不得扩大数据权限（不得导致 Demo Allow）。校验方式 / 启动失败 / fallback 细节留给 TD，但需求层保证 **fail closed on invalid profile（权限不扩大）**。
+
+## PR-6. Demo Allowed Classification Set（冻结）
+
+在**显式 Demo Profile** 下，以下 classifications 允许 Remote Dispatch：
+
+- `PUBLIC_BUSINESS_METADATA`
+- `SYSTEM_CONTROL_DATA`
+- `SYNTHETIC_TEST_DATA`
+- `USER_FREE_TEXT`
+- `USER_PII`
+- `HIGH_SENSITIVE_IDENTITY`
+- `TO_CONFIRM_OR_INTERNAL`
+
+**`UNKNOWN` → Remote DENY**（即使 Demo Profile 已开启）。原因：`UNKNOWN` ≠ Owner 已批准的用户业务数据。
+
+**missing / empty / unresolved classification：** 若现有 contract 归入 `UNKNOWN`，继续 **fail closed**；不得因 Demo 自动 ALLOW。
+
+**Multi-label：**
+
+- 请求中所有 classification 均属于 Demo Allow Set → Policy **MAY ALLOW**
+- 任意 classification 为 `UNKNOWN` 或其它未明确允许类别 → **DENY**
+
+## PR-7. Policy Evaluation Contract（冻结）
+
+1. Real Provider 必须在实际 **HTTP dispatch 前**完成 Remote Policy evaluation。
+2. Policy **DENY** → **0 HTTP calls**。
+3. Demo Profile **ALLOW** → 才允许进入 Provider Transport。
+4. **禁止** HTTP 调用后再判断 policy。
+5. Policy 决策必须 **本地、确定性、可测试**；**不得**使用 LLM 判断 ALLOW/DENY。
+6. `PolicyDecision.ALLOW` 只表示允许发送，**不**表示 HTTP/认证/模型/schema 成功；现有 Provider 失败语义保持。
+
+## PR-8. Secret / Credential Boundary（冻结）
+
+当前 `DataClassification` **无** `SECRET` / `CREDENTIAL` 类别。本次 **不要求**新增完整 Secret classification / DLP 系统。
+
+但必须保证：Provider authentication material（API Key、Authorization、Bearer Token）只属于 **Transport Authentication**，不得进入：
+
+- `LlmRequest.messages`
+- prompt / system message / user message
+- business metadata
+
+## PR-9. F09 / F10 / Graph / Rule 不变边界（硬 Requirement）
+
+### F09 Payload
+
+继续保持最小化：`system instructions` + `required_slot` + `allowed_values` + `user_text`。
+不得因 Policy Reopen 要求发送 full `AgentState` / conversation history / checkpoint / `orchestration_trace` / `request_id` / `session_id`。
+
+### F09 Output Validation
+
+Policy Reopen **仅**决定数据能否 Remote Dispatch，**不**改变：
+
+- `mapped_value ∈ allowed_values`（membership）
+- `confidence` 满足 `MappingPolicy.min_confidence`（当前 **0.80**）
+
+### F09 Explanation Side Route
+
+例如「灵活就业是什么意思？」仍不得被当作 slot selection；不得写 slot、推进 Business Graph、产生 candidate、改变 rule status。Policy Reopen **不得**破坏该 invariant。
+
+### LLM 权限边界（不变）
+
+即使 Demo 允许更多用户业务数据交给 LLM，LLM **仍不得**决定：
+
+- `next_node` / graph edge
+- `candidate_business_id` / `business_id` / `confirmed_business_id`
+- Rule result / eligibility result
+
+LLM 仍只负责：自然语言理解、slot extraction、受控 allowed-value mapping、confidence、controlled explanation / wording。
+
+### Business Graph / Rule / F10
+
+不得改变 Business Decision Graph 确定性推进权、Rule Engine 终审权、F10 final matter confirmation authority。
+
+### Demo Profile Scope
+
+仅影响 F07 Remote Data Policy。不得影响 Embedding、RAG、Business Graph、Rule Engine、Knowledge、Redis、PostgreSQL、Session API、F10 confirmation。
+
+## PR-10. Capability / Destination / DLP（OUT OF SCOPE）
+
+Demo 阶段 **不要求**：
+
+- operation-by-operation capability allowlist（`operation` 仍保留为 request metadata；未来 Production 可扩展）
+- destination registry / approved endpoint database
+- DLP engine / PII redaction / PII 自动识别
+- enterprise trust infrastructure / capability approval registry
+- endpoint ID registry / provider certificate registry / remote destination DB
+
+显式 Demo Policy Profile + 显式配置的 Remote Provider，已足够表达 Owner 对当前 Demo 部署的批准。
+
+## PR-11. Infrastructure / Dependency / Real LLM
+
+| 项 | Requirement |
+|----|-------------|
+| New infrastructure | **NO**（Redis / PostgreSQL / pgvector / Neo4j / Kafka / RabbitMQ / 新 HTTP 服务 / 新 policy service 均不得引入） |
+| New third-party package | **NO**（使用现有依赖；若 TD 发现必须新增须重新报告 Owner） |
+| Real Company API for Requirement / TD | **NO** |
+| Deterministic unit / mock-transport tests | **YES**（Code/Test 应可零真实网络验证 Default DENY 与 Demo ALLOW） |
+| Real LLM before F12 resumes（RG-F12-004） | **YES**（在 Reopen Code/Test/Review 完成后、回到 F12 Resource Gate 前真实验证；**不属于** Requirement 阶段） |
+
+## PR-12. F12 Golden Path Compatibility（语义；本阶段不运行）
+
+本 Reopen 必须支持后续真实路径：
+
+```
+用户：「平时接零活，没有固定单位」
+→ F09 LlmAnswerMapper
+→ F07 Remote Policy（Demo Profile）允许 USER_FREE_TEXT
+→ Real OPENAI_COMPATIBLE Provider
+→ structured mapping：other_flexible_employment + confidence
+→ F09 local membership + confidence threshold
+→ 仅 ACCEPTED 才交给 F04
+```
+
+F07 Requirement **不要求**本阶段实际运行该链。
+
+## PR-13. Historical AC Preservation
+
+- **不删除**任何原 `AC-F07-*`
+- **不改号**、不改写历史语义
+- **AC-F07-19** 保留为：Original Default / Non-Demo 下真实 `USER_FREE_TEXT` Remote **DENY**
+- 新增 AC 从 **AC-F07-39** 起（原最大编号为 **AC-F07-38**）
+
+## PR-14. Policy Reopen Acceptance Criteria（新）
+
+| ID | 语义 |
+|----|------|
+| **AC-F07-39** | Default / Non-Demo Remote Policy 与原 F07 行为兼容（含 `USER_FREE_TEXT` DENY 等） |
+| **AC-F07-40** | 必须显式配置 Demo Policy Profile 才能启用 Demo remote business-data allow |
+| **AC-F07-41** | Demo Profile 允许：`PUBLIC_BUSINESS_METADATA` / `SYSTEM_CONTROL_DATA` / `SYNTHETIC_TEST_DATA` / `USER_FREE_TEXT` / `USER_PII` / `HIGH_SENSITIVE_IDENTITY` / `TO_CONFIRM_OR_INTERNAL` |
+| **AC-F07-42** | `UNKNOWN` 在 Demo Profile 下仍 Remote DENY |
+| **AC-F07-43** | missing / empty / unresolved classification 不得因 Demo 自动 ALLOW（归入 UNKNOWN → DENY） |
+| **AC-F07-44** | multi-label 请求只要出现未批准分类必须 DENY |
+| **AC-F07-45** | Policy DENY 必须在 HTTP dispatch 前发生，且 0 HTTP calls |
+| **AC-F07-46** | `OPENAI_COMPATIBLE` 不自动代表 Demo approval（仅 protocol） |
+| **AC-F07-47** | 不得通过 URL / IP / hostname 推断 Demo approval |
+| **AC-F07-48** | Demo Policy 必须显式配置；禁止万能 bypass flag（如 TRUSTED/ALLOW_ALL/SKIP_POLICY） |
+| **AC-F07-49** | API key / Authorization 不得进入 Prompt / messages |
+| **AC-F07-50** | F09 mapping payload 继续保持最小化 |
+| **AC-F07-51** | F09 `mapped_value` membership validation 保持 |
+| **AC-F07-52** | F09 confidence threshold validation 保持（`min_confidence = 0.80`） |
+| **AC-F07-53** | LLM 不获得任何 Business Decision Authority（无 next_node / business_id / confirmed_business_id / rule outcome） |
+| **AC-F07-54** | Default 与 Demo Profile 行为均可由 deterministic unit tests 验证 |
+| **AC-F07-55** | 本次 Reopen 不新增基础设施 |
+| **AC-F07-56** | 本次 Reopen 不新增第三方依赖 |
+| **AC-F07-57** | F09 explanation side-route invariant 不得被破坏 |
+| **AC-F07-58** | 真实 F12 / Company LLM runtime 验证（含 RG-F12-004）在 Reopen Code/Test/Review 完成后进行；不属于 Requirement 阶段 |
+
+## PR-15. Non-Goals（Policy Reopen）
+
+本次 Reopen **不负责 / 不实现**：
+
+| 类别 | 排除项 |
+|------|--------|
+| Trust 基础设施 | 生产级 destination registry；approved endpoint DB；certificate registry；URL/IP/hostname trust |
+| 隐私工程 | DLP；PII 自动识别；身份证/手机号/姓名/地址 redaction |
+| Capability | operation-by-operation allowlist；capability approval registry |
+| 万能绕过 | `TRUSTED=true` / `ALLOW_ALL` / `SKIP_POLICY`；全局永久 `USER_FREE_TEXT` ALLOW |
+| Provider 混淆 | 将 Demo Policy 等同于 `DemoLlmProvider`；将 `OPENAI_COMPATIBLE` 当作 trusted |
+| 业务权 | 改变 Business Graph / Rule Engine / F10 / F11 / F12；给 LLM business decision authority |
+| 其它系统 | Embedding / RAG 行为变更；Redis / PostgreSQL / 新服务 / 新依赖 |
+| 本阶段执行 | 配置真实 LLM；调用真实 Company API；运行 pytest；关闭 OI-F09-DP-001 |
+
+## PR-16. Open Decisions
+
+### Frozen at Requirement（业务已冻结）
+
+1. `UNKNOWN` = DENY（含 Demo Profile）
+2. Default / Non-Demo policy 行为不变
+3. Demo business classifications allow set（PR-6）
+4. Secret/Credential 不进入 prompt / messages
+5. Demo Profile 必须显式启用
+6. 不做 capability allowlist
+7. 不做复杂 destination registry
+8. 不做 DLP / PII redaction
+9. 禁止 URL trust 与万能 bypass
+10. LLM 无 Business Decision Authority；F09/F10/Graph/Rule 边界不变
+
+### Deferred to Technical Design（非 Material Requirement 开放项）
+
+- Profile enum / 名称 / Settings 字段名
+- policy 函数签名与 provider wiring
+- profile 默认表示与 invalid profile 校验实现细节
+- 精确 production paths / test organization
+- path count
+
+**Material Requirement Open Decisions：0。**
+因此 **Requirement Finalization = NOT REQUIRED**。
+
+## PR-17. Cross-Feature Notes
+
+| 项 | 状态 |
+|----|------|
+| OI-F09-DP-001 | **保持 OPEN**；本阶段不关闭。Code/Test/Review 完成并验证后再更新 |
+| RG-F12-004 | **PENDING**（真实 LLM runtime/config） |
+| RG-F12-006 | **REQUIREMENT COMPLETE / IMPLEMENTATION PENDING** |
+| F12 Resource Gate | **仍 BLOCKED** |
+
+## PR-18. Requirement Self-Review Checklist
+
+| # | 检查项 | 结果 |
+|---|--------|------|
+| 1 | Owner Demo Policy 准确记录 | PASS |
+| 2 | 无全局永久 USER_FREE_TEXT ALLOW | PASS |
+| 3 | Default Policy 保持 | PASS |
+| 4 | UNKNOWN = DENY | PASS |
+| 5 | USER_PII / HIGH_SENSITIVE Demo ALLOW 与 Owner 一致 | PASS |
+| 6 | Secret 与业务数据区分 | PASS |
+| 7 | 无 URL trust | PASS |
+| 8 | 无万能 TRUSTED bypass | PASS |
+| 9 | Provider protocol ≠ trust | PASS |
+| 10 | 无 LLM business authority | PASS |
+| 11 | 未提前写 TD 实现细节 | PASS |
+| 12 | Non-Goals 完整 | PASS |
+| 13 | 新 AC 可测试 | PASS |
+| 14 | 旧 AC 未删除/改号；AC-F07-19 保留 | PASS |
+
+## PR-19. Stage Gate
+
+| 项 | 值 |
+|----|-----|
+| Policy Reopen Requirement | **COMPLETE** |
+| Requirement Finalization | **NOT REQUIRED** |
+| Technical Design Reopen | **COMPLETE**（见下文；当时本表曾写 READY FOR OWNER AUTHORIZATION） |
+| Technical Design Finalization | **NOT REQUIRED** |
+| Confirm / Code / Test / Review / F12 | **禁止自动进入**（须 Owner 明确授权 Confirm→Code） |
+
+---
+
+# Policy Reopen Technical Design
+
+| 字段 | 内容 |
+|------|------|
+| Reopen ID | F07-POLICY-REOPEN |
+| Stage | **TECHNICAL DESIGN — COMPLETE** |
+| TD Finalization | **NOT REQUIRED** |
+| Requirement prior | **COMPLETE**（AC-F07-39…58；Material Open Decisions = 0） |
+| Requirement changed by TD | **NO** |
+| Authorization | Owner 正式授权：F07 POLICY REOPEN — TECHNICAL DESIGN |
+| Based on | Requirement Addendum PR-1…PR-19 + 真实 Production import graph / call chain |
+| Document change scope | 仅本 Feature Doc；**不**修改 Production / Tests / Code-Reading / F09 docs |
+| Next | Confirm → Code — **READY FOR OWNER CONFIRMATION**；本阶段 **STOP** |
+
+## PTD-1. Current Real Call Chain（重建）
+
+真实符号（以代码为准，非历史报告猜测）：
+
+```
+Settings（llm_* fields）
+  → build_llm_provider(settings: object)          # provider.py
+       ├─ llm_provider is None / incomplete Real → _NotConfiguredProvider
+       ├─ llm_provider == "DEMO"                 → DemoLlmProvider()
+       └─ llm_provider == "OPENAI_COMPATIBLE"    → OpenAICompatibleLlmProvider(
+              base_url, api_key, model_id,
+              timeout_seconds, max_retries
+            )                                    # openai_compatible.py（lazy import）
+
+OpenAICompatibleLlmProvider.complete(request: LlmRequest)
+  → evaluate_request_remote_policy(request)      # policy.py；当前仅 1 参数
+       → collect_request_classifications(request)
+       → evaluate_remote_policy(classifications)
+       → PolicyDecision(allowed, denied_categories, reason_code)
+  → if not allowed → LlmProviderError(POLICY_DENIED)；0 HTTP
+  → else HTTP POST {base}/chat/completions
+       headers.Authorization = Bearer {api_key}   # 不在 messages
+       payload.messages = role + content only
+```
+
+**当前 policy 输入维度：** 仅 `messages[].classifications`（聚合）。**不**读 content / operation / Settings / URL。
+
+## PTD-2. Import Graph（放置约束）
+
+| Module | Imports |
+|--------|---------|
+| `settings.py` | **不** import `llm.*`（当前） |
+| `llm/types.py` | pydantic only（叶节点） |
+| `llm/policy.py` | `llm.types` only |
+| `llm/demo.py` | `llm.types` only |
+| `llm/openai_compatible.py` | `llm.policy`, `llm.types`, httpx |
+| `llm/provider.py` | `llm.demo`, `llm.types`；**lazy** import `openai_compatible` |
+| `llm/__init__.py` | re-export 上述 |
+
+**结论：** `RemoteDataPolicyProfile` 放在 **`llm/types.py`**（与 `DataClassification` 同层）。
+`settings.py` **允许**单向 `from gov_service_agent.llm.types import RemoteDataPolicyProfile`（`llm` **永不** import `settings` → **无环**）。
+**禁止**把 Profile enum 放进 `settings.py` 再让 `policy.py` 反向依赖 Settings。
+
+## PTD-3. Technical Decisions（D12…；原最大 D11）
+
+| ID | Decision | Maps AC |
+|----|----------|---------|
+| **D12** | 新增 `class RemoteDataPolicyProfile(str, Enum)`于 `llm/types.py`；values：`DEFAULT`、`DEMO_APPROVED`；默认语义 = `DEFAULT`。禁止 bool bypass（`trusted`/`allow_all`/`skip_policy`） | AC-39,40,46,48 |
+| **D13** | Settings：`llm_remote_data_policy_profile: RemoteDataPolicyProfile = RemoteDataPolicyProfile.DEFAULT`；env：`LLM_REMOTE_DATA_POLICY_PROFILE`；加入 `KNOWN_DOTENV_KEYS` / `APPLICATION_DOTENV_KEYS` / `_APPLICATION_SETTINGS_FIELDS`；`.env.example` 增加 placeholder 注释行 | AC-40,48,55 |
+| **D14** | Invalid / 未识别 profile 字符串：**Settings fail-fast**（与 `LLM_PROVIDER` 未知值同模式：normalize upper → typed enum / after-validator；错误不得静默切 DEMO，也不得扩大权限） | AC-40,48 |
+| **D15** | 传递链：`Settings.llm_remote_data_policy_profile` → `build_llm_provider` → `OpenAICompatibleLlmProvider(..., remote_data_policy_profile=...)` 存为实例字段 → `complete` 调用 `evaluate_request_remote_policy(request, profile=self._remote_data_policy_profile)`。无 global mutable / 无 `os.environ` / 无 `get_settings()` in policy | AC-40,45,54 |
+| **D16** | Signature 冻结：`evaluate_remote_policy(classifications, profile: RemoteDataPolicyProfile = RemoteDataPolicyProfile.DEFAULT) -> PolicyDecision`；`evaluate_request_remote_policy(request, profile: RemoteDataPolicyProfile = RemoteDataPolicyProfile.DEFAULT) -> PolicyDecision`。纯函数；默认参数仅保证未传 profile 时 = DEFAULT（与 unset Settings 同义） | AC-39,45,54 |
+| **D17** | DEFAULT allow-set = **复用**现有 `_REMOTE_ALLOW`（不复制第二份 DEFAULT 表） | AC-39 |
+| **D18** | DEMO allow-set = frozenset{`PUBLIC_BUSINESS_METADATA`,`SYSTEM_CONTROL_DATA`,`SYNTHETIC_TEST_DATA`,`USER_FREE_TEXT`,`USER_PII`,`HIGH_SENSITIVE_IDENTITY`,`TO_CONFIRM_OR_INTERNAL`}；**不含** `UNKNOWN` | AC-41 |
+| **D19** | `collect_request_classifications` 行为保持：empty/missing message classifications → `UNKNOWN`；`evaluate_*`：`classifications ⊆ allow_set(profile)` → ALLOW，否则 DENY 且 `denied_categories = classifications - allow_set` | AC-42,43,44 |
+| **D20** | Policy **先于** HTTP；DENY → 现有 `LlmProviderError(LlmErrorCode.POLICY_DENIED)` + **0 HTTP**；ALLOW 仅表示可进入 transport，**≠** HTTP/auth/parse 成功 | AC-45,58 |
+| **D21** | **`LlmRequest` = NO CHANGE**；`operation` 保留为 metadata；本轮 policy **不**读 operation；**不加** capability allowlist | AC-50；Non-Goal |
+| **D22** | **F09 Production = NO CHANGE**（`LlmAnswerMapper` / explanation / classifications / payload / membership / `min_confidence=0.80` / side-route 全部不动；禁止把 `USER_FREE_TEXT` 伪造成其它类） | AC-50…53,57 |
+| **D23** | `DemoLlmProvider` / `_NotConfiguredProvider` = **NO CHANGE**；Profile **不**参与 provider selection；仅注入 `OpenAICompatibleLlmProvider`。正交：`OPENAI_COMPATIBLE+DEFAULT` 与 `OPENAI_COMPATIBLE+DEMO_APPROVED` 均合法 | AC-46,39 |
+| **D24** | Test：扩展 `tests/test_llm_policy.py` matrix；扩展 `tests/test_llm_openai_compatible.py`（DEFAULT deny 0-call；DEMO USER_FREE_TEXT allow MockTransport 1-call；DEMO USER_PII allow；DEMO UNKNOWN 0-call）；扩展 `tests/test_settings.py`（default/valid/invalid）。**无**真实 API。F09 tests：**regression-only 运行、不修改** | AC-54,58 |
+| **D25** | **无**新 infra / **无**新第三方依赖 / **无** DB·Redis migration / **无** destination registry / **无** DLP / **无** URL trust | AC-47,55,56 |
+| **D26** | `PolicyDecision` / `reason_code`（`POLICY_ALLOWED`/`POLICY_DENIED`）= **NO CHANGE**；不新增 reason codes | — |
+
+**Material TD Open Decisions：0** → TD Finalization = **NOT REQUIRED**。
+
+## PTD-4. Policy Profile Type（冻结）
+
+| 项 | 值 |
+|----|-----|
+| Exact type | `RemoteDataPolicyProfile` |
+| Kind | `str, Enum`（对齐 `DataClassification` / `AppEnv`） |
+| File | `src/gov_service_agent/llm/types.py` |
+| Values | `DEFAULT = "DEFAULT"`；`DEMO_APPROVED = "DEMO_APPROVED"` |
+| Default | `DEFAULT` |
+| Why here | 叶模块；Settings/policy/provider/openai_compatible 均可单向引用；避免 settings↔policy 环 |
+
+**正交维度：**
+
+| 轴 | Values | 职责 |
+|----|--------|------|
+| Provider type（`LLM_PROVIDER`） | `DEMO` / `OPENAI_COMPATIBLE` / unset→NOT_CONFIGURED | 如何连接 |
+| Policy profile（本字段） | `DEFAULT` / `DEMO_APPROVED` | 哪些业务数据可 Remote |
+
+`OPENAI_COMPATIBLE` **永不**自动等同 Demo approval。
+
+## PTD-5. Settings Contract（冻结）
+
+| 项 | 值 |
+|----|-----|
+| Python field | `llm_remote_data_policy_profile` |
+| Env var | `LLM_REMOTE_DATA_POLICY_PROFILE` |
+| Type | `RemoteDataPolicyProfile` |
+| Default | `RemoteDataPolicyProfile.DEFAULT` |
+| Unset / blank | → `DEFAULT`（不得自动 DEMO） |
+| Invalid value | **Fail-fast** ValidationError（不得 fallback DEMO；不得扩大权限） |
+| Auto-select from APP_ENV / URL / key / host | **FORBIDDEN** |
+| Persist in code as machine default DEMO | **FORBIDDEN** |
+
+`.env.example`：增加一行注释 placeholder（无真实值），例如 `# LLM_REMOTE_DATA_POLICY_PROFILE=DEFAULT`。
+
+## PTD-6. Allow-Sets & Matrix
+
+**DEFAULT** → `_REMOTE_ALLOW`（现有）：
+
+`PUBLIC_BUSINESS_METADATA` · `SYSTEM_CONTROL_DATA` · `SYNTHETIC_TEST_DATA`
+
+**DEMO_APPROVED** → `_REMOTE_ALLOW_DEMO_APPROVED`（新常量名可微调，集合冻结）：
+
+上表七类业务分类；**无** `UNKNOWN`。
+
+| Profile | Classification | Decision |
+|---------|----------------|----------|
+| DEFAULT | PUBLIC_BUSINESS_METADATA | ALLOW |
+| DEFAULT | SYSTEM_CONTROL_DATA | ALLOW |
+| DEFAULT | SYNTHETIC_TEST_DATA | ALLOW |
+| DEFAULT | USER_FREE_TEXT | DENY |
+| DEFAULT | USER_PII | DENY |
+| DEFAULT | HIGH_SENSITIVE_IDENTITY | DENY |
+| DEFAULT | TO_CONFIRM_OR_INTERNAL | DENY |
+| DEFAULT | UNKNOWN | DENY |
+| DEMO_APPROVED | 七类 Approved | ALLOW |
+| DEMO_APPROVED | UNKNOWN | DENY |
+| DEMO_APPROVED | Approved + UNKNOWN（multi） | DENY |
+| DEMO_APPROVED | 仅 Approved multi-label | ALLOW |
+| either | missing/empty → UNKNOWN | DENY |
+
+**Algorithm：**
+
+```
+classes = collect_request_classifications(request)  # empty/missing → {UNKNOWN}
+allow = _REMOTE_ALLOW if profile == DEFAULT else _REMOTE_ALLOW_DEMO_APPROVED
+denied = classes - allow
+if denied: DENY(denied_categories=denied, reason=POLICY_DENIED)
+else: ALLOW(denied_categories=empty, reason=POLICY_ALLOWED)
+```
+
+## PTD-7. Provider / Factory Changes（冻结）
+
+### `OpenAICompatibleLlmProvider`
+
+- `__init__(..., remote_data_policy_profile: RemoteDataPolicyProfile = RemoteDataPolicyProfile.DEFAULT)`
+- 存 `self._remote_data_policy_profile`
+- `complete`：第一步 `evaluate_request_remote_policy(request, profile=self._remote_data_policy_profile)`
+- DENY / ALLOW / HTTP / logging / auth header 行为保持；**不**把 profile 或 API key 写入 messages
+- 构造默认 `DEFAULT` → 现有单测若不传 profile 仍为原 fail-closed
+
+### `build_llm_provider`
+
+- Provider **selection** 逻辑不变（仍只看 `llm_provider` + Real 三件套完整性）
+- 仅当构造 `OpenAICompatibleLlmProvider` 时传入 `remote_data_policy_profile=getattr(settings, "llm_remote_data_policy_profile", RemoteDataPolicyProfile.DEFAULT)`（或等价显式读取）
+- `DEMO` / NOT_CONFIGURED：**不**传、不使用 Profile
+
+### Unchanged
+
+- `DemoLlmProvider`（本地、无网络、不调 remote policy）
+- `_NotConfiguredProvider`
+- Auth：key 仅 HTTP `Authorization`；Policy Profile **不**访问/记录/修改 key
+
+## PTD-8. F09 / Authority（设计确认 = NO CHANGE）
+
+| 项 | Design |
+|----|--------|
+| `LlmAnswerMapper.map_answer` | NO CHANGE；仍 `USER_FREE_TEXT` + `SYSTEM_CONTROL_DATA`；`operation=f09_slot_answer_mapping` |
+| Explanation | NO CHANGE；`f09_explain_public_concept`；PUBLIC+SYSTEM |
+| Payload | 仍最小化；无 AgentState/history/ids |
+| Membership / confidence | 仍本地；threshold **0.80** |
+| LLM authority | 仍无 next_node / business_id / confirmed_business_id / rule outcome |
+| Graph / Rule / F10 | 不变 |
+
+## PTD-9. Failure Modes
+
+| ID | Mode | Behavior |
+|----|------|----------|
+| FM1 | Profile unset | DEFAULT |
+| FM2 | Profile invalid | Settings fail-fast |
+| FM3 | DEFAULT + forbidden class | POLICY_DENIED / 0 HTTP |
+| FM4 | DEMO + UNKNOWN / unapproved | POLICY_DENIED / 0 HTTP |
+| FM5 | Auth/network | 现有 Provider error mapping |
+| FM6 | Invalid response | 现有 parse/contract failure |
+| FM7 | mapped_value ∉ allowed_values | F09 本地 reject |
+| FM8 | confidence < 0.80 | F09 本地 reject；不推进 Graph |
+
+## PTD-10. Observability
+
+保持现有 safe logging。若记录 policy：最多 `profile` name、allowed/denied、classification names、`reason_code`、`operation`。
+**禁止**新增 raw prompt / API key / Authorization 日志。
+
+## PTD-11. Performance / Migration
+
+- Policy lookup = 本地 frozenset membership；额外 latency negligible
+- **无** network/DB/Redis for policy
+- **无** schema / data / Redis migration
+
+## PTD-12. Test Strategy（冻结）
+
+### Modified tests
+
+| Path | Coverage |
+|------|----------|
+| `tests/test_llm_policy.py` | DEFAULT 原 allow/deny；DEMO 七类 ALLOW；DEMO UNKNOWN DENY；multi-label；missing/empty DENY；deterministic |
+| `tests/test_llm_openai_compatible.py` | A DEFAULT+USER_FREE_TEXT→0 HTTP；B DEMO+USER_FREE_TEXT→MockTransport 1 call；C DEMO+USER_PII allow path；D DEMO+UNKNOWN→0 HTTP；现有 deny cases 默认仍 DEFAULT |
+| `tests/test_settings.py` | default=DEFAULT；`DEMO_APPROVED` parse；invalid fail-fast；dotenv key accepted |
+
+### Regression-only（运行、不修改）
+
+| Path | Why |
+|------|-----|
+| `tests/test_agent_interaction.py` | `LlmAnswerMapper` classifications / confidence / explanation |
+| `tests/test_agent_workflow.py` | F09 workflow + USER_FREE_TEXT 不进入 explanation path 等 |
+
+### Explicitly out of automated Reopen unit tests
+
+- Real Company API / `RUN_LLM_REAL`（延后 F12 Resource Gate；RG-F12-004）
+
+## PTD-13. AC → TD Traceability
+
+| AC | TD |
+|----|-----|
+| AC-F07-39 | D12, D17, D23 |
+| AC-F07-40 | D12, D13, D14, D15 |
+| AC-F07-41 | D18 |
+| AC-F07-42 | D18, D19 |
+| AC-F07-43 | D19 |
+| AC-F07-44 | D19 |
+| AC-F07-45 | D15, D20 |
+| AC-F07-46 | D12, D23 |
+| AC-F07-47 | D25 |
+| AC-F07-48 | D12, D13, D14 |
+| AC-F07-49 | D15, D20（auth boundary 保持） |
+| AC-F07-50 | D21, D22 |
+| AC-F07-51 | D22 |
+| AC-F07-52 | D22 |
+| AC-F07-53 | D22 |
+| AC-F07-54 | D16, D24 |
+| AC-F07-55 | D25 |
+| AC-F07-56 | D25 |
+| AC-F07-57 | D22 |
+| AC-F07-58 | D24（defer real LLM to F12） |
+
+**孤立 AC：0。**
+
+## PTD-14. Frozen Path Sets
+
+### Frozen Production Paths（Code 允许修改）
+
+| # | Path | Why |
+|---|------|-----|
+| 1 | `src/gov_service_agent/llm/types.py` | `RemoteDataPolicyProfile` |
+| 2 | `src/gov_service_agent/llm/policy.py` | Demo allow-set + profile 参数 evaluator |
+| 3 | `src/gov_service_agent/llm/openai_compatible.py` | 存 profile；evaluate 传参 |
+| 4 | `src/gov_service_agent/llm/provider.py` | factory 传入 profile |
+| 5 | `src/gov_service_agent/settings.py` | field / env keys / validators |
+| 6 | `src/gov_service_agent/llm/__init__.py` | 导出 `RemoteDataPolicyProfile`（及如需的 `evaluate_request_remote_policy`） |
+| 7 | `.env.example` | placeholder 一行 |
+
+**Core Production Python（逻辑）：5**（types/policy/openai_compatible/provider/settings）。
+**+ package export `__init__.py`（1）+ `.env.example`（1）** = 完整 Production path set **7**。
+超出 5 的原因：`__init__.py` 是既有公共导出面（非第二套 policy）；`.env.example` 是配置契约不是运行逻辑。两者不可合并进前五而不破坏 Settings/dotenv 约定。
+
+### Frozen Modified Test Paths
+
+1. `tests/test_llm_policy.py`
+2. `tests/test_llm_openai_compatible.py`
+3. `tests/test_settings.py`
+
+### Frozen Regression-only Test Paths
+
+1. `tests/test_agent_interaction.py`
+2. `tests/test_agent_workflow.py`
+
+### Frozen Docs Paths（完整 Reopen 生命周期；本 TD 阶段仍只改 #1）
+
+1. `docs/features/F07-llm-provider-data-policy.md`（本文件；Requirement+TD 已改）
+2. `docs/code-reading/F07-llm-provider-data-policy-code-reading.md`（Explanation 阶段）
+3. `docs/features/F09-missing-slot-question-answer-mapping.md`（Code/Test/Review 后更新 **OI-F09-DP-001**；本 TD **不**改）
+
+**超出 F07 的 docs：** 仅 F09 Feature Doc（OI 状态同步）。**无** F12/F10/F11 Production。
+
+后续 Code **不得**擅自增加 path；若必须 → STOP + Owner scope exception。
+
+## PTD-15. F12 Runtime Note（本阶段不配置）
+
+F07 Reopen Code/Test/Review PASS 后，回到 F12 Resource Gate 再配置/验证：
+
+`LLM_PROVIDER` / `LLM_MODEL_ID` / `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_REMOTE_DATA_POLICY_PROFILE=DEMO_APPROVED`
+以及既有 Embedding persistent config。
+**本 TD 不配置、不调用真实 LLM。**
+
+| Blocker | Status after this TD |
+|---------|----------------------|
+| RG-F12-004 | **PENDING** |
+| RG-F12-006 | **TD COMPLETE / IMPLEMENTATION PENDING** |
+| F12 | **仍 BLOCKED** |
+
+## PTD-16. TD Self-Review
+
+| # | Check | Result |
+|---|-------|--------|
+| 1 | Requirement 未被改变 | PASS |
+| 2 | DEFAULT 行为完全保留 | PASS |
+| 3 | DEMO allow set 准确 | PASS |
+| 4 | UNKNOWN DENY | PASS |
+| 5 | invalid profile fail-safe | PASS（fail-fast） |
+| 6 | Profile 显式配置 | PASS |
+| 7–8 | 无 URL trust / 无万能 bool | PASS |
+| 9–11 | 无 capability / registry / DLP | PASS |
+| 12 | 不改 F09 contract | PASS |
+| 13 | LLM authority 不变 | PASS |
+| 14 | 0 HTTP deny | PASS |
+| 15 | Secret 不进 prompt | PASS |
+| 16 | 测试不依赖真实 API | PASS |
+| 17–18 | 无新依赖 / infra | PASS |
+| 19 | 路径冻结完整 | PASS |
+| 20 | AC traceability 完整 | PASS |
+
+## PTD-17. Stage Gate
+
+| 项 | 值 |
+|----|-----|
+| Technical Design Reopen | **COMPLETE** |
+| TD Finalization | **NOT REQUIRED** |
+| Confirm → Code | **READY FOR OWNER CONFIRMATION** |
+| Auto-enter Code / Test / F12 | **FORBIDDEN** |
+
+**STOP。** 等待 Owner 授权 Confirm / Code。
+
+> **历史注记（Explanation）：** 上表保留 TD 结束时快照。后续 Confirm / Code / Test / Review 均已完成；当前阶段见文首 **Current Stage Status** 与下文 **Policy Reopen Explanation**。
+
+---
+
+# Policy Reopen Explanation
+
+| 字段 | 内容 |
+|------|------|
+| Stage | **EXPLANATION — COMPLETE** |
+| Review prior | **PASS**（BLOCKING/MAJOR/MINOR = 0；INFO = 3；Review Fix = NOT REQUIRED） |
+| Test prior | **PASS**（full：620 passed / 13 skipped / 0 failed / 0 warnings） |
+| Code-Reading | **本阶段不修改**；下一独立阶段更新 |
+| Real Company LLM | **NOT YET VERIFIED**（代码能力 READY；运行时仍 PENDING） |
+
+## PEX-1. Reopen Background — 为什么要重开
+
+Original F07 已 **CLOSED**。其 Remote Data Policy 采用 fail-closed：真实 `USER_FREE_TEXT` 默认 **DENY**（历史 **AC-F07-19** + TD D07）。这不是“公司模型不能处理中文”，而是当时**尚未获得**生产/Demo 用户业务文本远程发送的 Owner 授权。
+
+F09 随后实现了 `LlmAnswerMapper`：需要把用户自然语言（例如「平时接零活，没有固定单位」）映射到受控枚举（例如 `employment_type = other_flexible_employment`）并返回 `confidence`。F09 **正确**地把用户回答标为 `USER_FREE_TEXT`，且 **不拥有**修改 F07 Policy 的权限（**OI-F09-DP-001**）。
+
+因此 F12 E2E 被 **RG-F12-006** 阻塞：不是 Mapper 没写，而是 Remote Policy 在 HTTP 前拒绝。
+
+本次 Policy Reopen **只**解决 Demo 阶段 Remote Data Policy：增加显式 `RemoteDataPolicyProfile`，在 Owner 批准下允许指定业务分类 Remote Dispatch；**不**全局永久放开、**不**把业务决策权交给 LLM。
+
+## PEX-2. Owner Demo Policy Boundary
+
+当前项目处于 **Demo 阶段**。Owner 已批准：下列**用户业务数据**可发送给公司指定 Remote LLM 做业务处理：
+
+`PUBLIC_BUSINESS_METADATA` · `SYSTEM_CONTROL_DATA` · `SYNTHETIC_TEST_DATA` · `USER_FREE_TEXT` · `USER_PII` · `HIGH_SENSITIVE_IDENTITY` · `TO_CONFIRM_OR_INTERNAL`
+
+**仍 DENY：** `UNKNOWN`（含 missing/empty 归入 UNKNOWN）。
+
+**不属于授权：** 系统 Secret / Credential。下列内容**不得**进入 LLM `messages` / prompt：
+
+`LLM_API_KEY` · Authorization / Bearer Token · DB/Redis 密码 · 其它运行时认证凭据。
+
+Transport 层 HTTP `Authorization: Bearer …` 属于 Provider 认证，**不是**业务 payload。
+
+**DEMO_APPROVED 不是：** “所有内容可信 / 跳过安全检查 / 无条件 ALLOW 一切远程请求”。
+**DEMO_APPROVED 是：** Owner 明确授权的 Demo **用户业务分类**可以 Remote Dispatch；UNKNOWN 与 Secret 边界仍然成立。
+
+## PEX-3. End-to-End Business Flow（第一主线）
+
+```
+用户提交当前槽位回答（自然语言）
+  → F09 接收 NEED_SLOT 上下文 + user_text
+  → LlmAnswerMapper.map_answer 构造最小 LlmRequest
+       （system instructions + required_slot + allowed_values + user_text；
+        classifications 含 USER_FREE_TEXT）
+  → LlmProvider.complete（通常为 OpenAICompatibleLlmProvider）
+  → Remote Data Policy Profile 生效（Settings → Factory 注入）
+       DEFAULT        → 原 F07 allow-set → USER_FREE_TEXT DENY → 0 HTTP
+       DEMO_APPROVED  → Demo allow-set → 业务类 MAY ALLOW
+  → DENY：LlmProviderError(POLICY_DENIED)；数据不离开本地 Policy 边界
+  → ALLOW：仅表示允许进入 HTTP；仍可能 auth/timeout/parse 失败
+  → 结构化输出回到 F09
+  → validate_slot_mapping：membership（mapped_value ∈ allowed_values）
+  → confidence >= MappingPolicy.min_confidence（0.80）
+  → 仅 ACCEPTED → F04 Business Decision Graph 确定性推进
+  → Terminal 后仍须 F10 confirmation 才产生 confirmed_business_id
+```
+
+## PEX-4. 主流程逐步说明
+
+### Step A — 用户回答当前槽位
+
+用户/系统在做什么：用户在回答 Business Graph 当前 `required_slot` 对应的问题。
+代码：Agent F09 node 组装 `AnswerMappingRequest(required_slot, allowed_values, user_text)`，调用 `LlmAnswerMapper.map_answer`（`agent/interaction.py`）。
+为什么存在：把自然语言变成受控枚举，供确定性图推进。
+输入：槽位名、允许值列表、用户原文。
+输出：`AnswerMapperOutput`（kind / mapped_value / confidence）。
+交给谁：本地 `validate_slot_mapping`，再决定是否调 F04。
+权限边界：Mapper **不**改 `next_node` / `business_id` / rule。
+
+### Step B — F09 构造 LlmRequest（F09 本次 0 change）
+
+F09 原本做的是对的：用户自由文本标为 `USER_FREE_TEXT`，**不得**伪装成 `SYNTHETIC_TEST_DATA` / `SYSTEM_CONTROL_DATA`。真正应改的是 F07 Policy，故 F09 Production **本次零修改**。
+
+Payload 仍最小化：system instructions + `required_slot` + `allowed_values` + `user_text`。
+**不**发送 full AgentState / conversation history / `request_id` / `session_id` / checkpoint / orchestration_trace。
+`operation="f09_slot_answer_mapping"` 仅为元数据，**不**参与 Policy 判定。
+
+### Step C — Provider 接收请求
+
+`OpenAICompatibleLlmProvider.complete(request)`（`llm/openai_compatible.py`）先读构造时注入的 `remote_data_policy_profile`，再调 Policy。
+Provider Type（`DEMO` / `OPENAI_COMPATIBLE` / `NOT_CONFIGURED`）回答“用什么方式调用模型”；
+Policy Profile（`DEFAULT` / `DEMO_APPROVED`）回答“哪些业务数据允许 Remote Dispatch”。二者**正交**。
+`OPENAI_COMPATIBLE` **≠** trusted。
+
+### Step D — Settings → Factory → Profile
+
+部署显式配置 `LLM_REMOTE_DATA_POLICY_PROFILE` → `Settings.llm_remote_data_policy_profile: RemoteDataPolicyProfile`（默认 `DEFAULT`）。
+非法值（如 `ALLOW_ALL`）：Settings **fail-fast**，不静默 DEMO、不 permissive fallback。
+`.env.example` 示例语义为默认 `DEFAULT`；Demo 环境须**显式**改为 `DEMO_APPROVED`。
+不会因 APP_ENV / API key 存在 / URL / localhost / `OPENAI_COMPATIBLE` 自动开启 Demo。
+
+`build_llm_provider(settings)`（`llm/provider.py`）**不改变** Provider selection；仅在构造 `OpenAICompatibleLlmProvider` 时传入 profile。
+Profile **不能**把 `NOT_CONFIGURED` 变成可调用 Real Provider。
+（INFO RI-F07R-002：若 duck-typed caller 传入非 enum profile，factory 防御性回落 **DEFAULT**——只收紧权限，永不升到 DEMO_APPROVED。）
+
+### Step E — Policy 本地判定（HTTP 前）
+
+`evaluate_request_remote_policy(request, profile)` → `evaluate_remote_policy(classifications, profile)`（`llm/policy.py`）。
+纯本地、确定性、无网络/DB/Redis/环境变量/URL/LLM。
+DEFAULT 复用原 `_REMOTE_ALLOW`；DEMO_APPROVED 使用 `_REMOTE_ALLOW_DEMO_APPROVED`（七类业务；**无** UNKNOWN）。
+
+**DENY：** 立即 `LlmProviderError(POLICY_DENIED)`，**0 HTTP**——数据不离开本地 Policy 边界。
+**ALLOW：** 仅允许进入现有 HTTP 流程；≠ HTTP/认证/解析成功。
+
+### Step F — LLM 只做 Mapping，本地再审
+
+允许 Remote 后，模型只返回 utterance kind / mapped value / confidence。
+例（未来 Golden Path 语义，**本阶段未跑真实 LLM**）：
+
+- 用户：「平时接零活，没有固定单位」
+- slot：`employment_type`
+- allowed：`self_employed_without_employees` / `part_time_without_employer_insurance` / `other_flexible_employment`
+- LLM 可映射：`other_flexible_employment` + confidence
+
+之后 F09 `validate_slot_mapping`：**membership**（`mapped_value ∈ allowed_values`）→ **confidence ≥ 0.80**。任一层失败 → 不推进 Business Graph。Policy Reopen **未取消**这两层。
+
+### Step G — Business Graph / F10
+
+仅 `ACCEPTED` 才交给 F04。Business Decision Graph 按 `current_node`、validated slots、预定义 edges **确定性**推进。
+Terminal 的 `candidate_business_id` **≠** `confirmed_business_id`；最终确认仍属 **F10**。F07 Reopen 不改变。
+
+## PEX-5. DEFAULT vs DEMO_APPROVED
+
+| Profile | 如何启用 | 行为摘要 |
+|---------|----------|----------|
+| **DEFAULT** | 未配置 / blank / 显式 DEFAULT | 完全等价原 F07：`USER_FREE_TEXT`/`USER_PII`/`HIGH_SENSITIVE`/`TO_CONFIRM`/`UNKNOWN` → DENY |
+| **DEMO_APPROVED** | **仅**显式 env/Settings | Owner 批准的七类业务 → MAY ALLOW；UNKNOWN → DENY |
+
+## PEX-6. Policy Decision Examples
+
+**Multi-label（必须全部属于 allow-set）：**
+
+- DEMO + `{USER_FREE_TEXT, SYSTEM_CONTROL_DATA}` → **ALLOW**
+- DEMO + `{USER_FREE_TEXT, UNKNOWN}` → **DENY**，`denied_categories={UNKNOWN}`
+  （不是“有一个允许就 ALLOW”。）
+
+**Empty / missing 为何不会误放行：**
+数学上 empty set ⊆ 任意集合。实现上 missing/empty 先经 `_normalize_classifications` / `collect_request_classifications` → **UNKNOWN**，再判定；UNKNOWN ∉ allow-set → **DENY**。这就是 fail-closed。
+
+**PolicyDecision 合同未变：** `allowed` / `denied_categories` / `reason_code`（`POLICY_ALLOWED` / `POLICY_DENIED`）。无 TRUSTED_ALLOW / DEMO_BYPASS 之类额外权限语义。
+
+## PEX-7. Explanation Side Route（未改）
+
+用户问「灵活就业是什么意思？」→ `detect_explanation_request` 识别 `EXPLANATION_REQUEST` → explanation side route。
+**不**写 slot、**不**推进 Graph、**不**产生 candidate、**不**改 rule status。Policy Reopen 不影响该 invariant。
+
+## PEX-8. Failure / Fail-Closed Cases
+
+| 情况 | 结果 |
+|------|------|
+| DEFAULT + 禁止分类 | POLICY_DENIED / 0 HTTP |
+| DEMO + UNKNOWN / missing / empty | POLICY_DENIED / 0 HTTP |
+| 非法 Settings profile | fail-fast |
+| Provider 未配齐 | 仍 NOT_CONFIGURED（与 Profile 无关） |
+| Policy ALLOW 后 HTTP/parse 失败 | 现有 Provider/F09 受控失败；不推进 Graph |
+| membership / confidence 失败 | 本地 reject；不推进 Graph |
+
+## PEX-9. Test / Review Evidence（不重跑）
+
+| Suite | Result |
+|-------|--------|
+| `test_llm_policy` | 29 passed |
+| `test_llm_openai_compatible` | 34 passed |
+| `test_settings` | 88 passed |
+| `test_agent_interaction` | 63 passed |
+| `test_agent_workflow` | 31 passed |
+| Combined targeted | 245 passed / 0 failed / 0 warnings |
+| Full suite | **620 passed / 13 skipped / 0 failed / 0 warnings** |
+
+| Review | Result |
+|--------|--------|
+| Status | **PASS** |
+| BLOCKING / MAJOR / MINOR | **0 / 0 / 0** |
+| INFO | **3**（无需 Review Fix） |
+
+## PEX-10. Review INFO Disposition
+
+| ID | Disposition |
+|----|-------------|
+| **RI-F07R-001** | **DISPOSED IN EXPLANATION** — Feature Doc stage 已同步至 Confirm/Code/Test/Review/Explanation |
+| **RI-F07R-002** | **EXPLAINED / NO CODE CHANGE** — Settings 非法 fail-fast；duck-typed factory 仅防御性 DEFAULT（收紧） |
+| **RI-F07R-003** | **ACCEPTED / NO TEST CHANGE** — helper 命名欠精确，但断言与输入正确，无假阳性 |
+
+## PEX-11. Runtime Validation Still Pending
+
+| 项 | 状态 |
+|----|------|
+| 代码能力（Demo Profile + Real Provider wiring） | **READY** |
+| 真实 Company LLM auth/connectivity/model | **NOT YET VERIFIED** |
+| RG-F12-004 | **PENDING** |
+| RG-F12-006 | **POLICY IMPLEMENTATION REVIEW PASS / RUNTIME VALIDATION PENDING** |
+| F12 Resource Gate | **仍 BLOCKED** |
+| OI-F09-DP-001 | **仍 OPEN**（见 F09 doc；关闭条件 = F12 真实 Remote USER_FREE_TEXT probe PASS） |
+
+**禁止宣称：** “真实 LLM 已打通”。本阶段未配置 `LLM_*`、未调用 Company API。
+
+## PEX-12. Explanation Stage Gate
+
+| 项 | 值 |
+|----|-----|
+| Explanation | **COMPLETE** |
+| Code-Reading Update | **READY FOR OWNER AUTHORIZATION**（未授权；**STOP**） |
+| Commit / Push / F12 | **FORBIDDEN** without Owner authorization |

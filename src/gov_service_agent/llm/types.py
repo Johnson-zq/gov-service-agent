@@ -25,6 +25,13 @@ class DataClassification(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
+class RemoteDataPolicyProfile(str, Enum):
+    """Explicit remote data policy profile (F07 Policy Reopen)."""
+
+    DEFAULT = "DEFAULT"
+    DEMO_APPROVED = "DEMO_APPROVED"
+
+
 class LlmErrorCode(str, Enum):
     NOT_CONFIGURED = "NOT_CONFIGURED"
     UNKNOWN_PROVIDER = "UNKNOWN_PROVIDER"

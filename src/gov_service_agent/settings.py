@@ -18,6 +18,8 @@ from pydantic_settings import (
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.exc import ArgumentError
 
+from gov_service_agent.llm.types import RemoteDataPolicyProfile
+
 
 class AppEnv(str, Enum):
     LOCAL = "LOCAL"
@@ -55,6 +57,7 @@ KNOWN_DOTENV_KEYS = frozenset(
         "LLM_API_KEY",
         "LLM_TIMEOUT_SECONDS",
         "LLM_MAX_RETRIES",
+        "LLM_REMOTE_DATA_POLICY_PROFILE",
         "REDIS_HOST",
         "REDIS_PORT",
         "REDIS_DB",
@@ -88,6 +91,7 @@ APPLICATION_DOTENV_KEYS = frozenset(
         "LLM_API_KEY",
         "LLM_TIMEOUT_SECONDS",
         "LLM_MAX_RETRIES",
+        "LLM_REMOTE_DATA_POLICY_PROFILE",
         "REDIS_HOST",
         "REDIS_PORT",
         "REDIS_DB",
@@ -122,6 +126,7 @@ _APPLICATION_SETTINGS_FIELDS = frozenset(
         "llm_api_key",
         "llm_timeout_seconds",
         "llm_max_retries",
+        "llm_remote_data_policy_profile",
         "redis_host",
         "redis_port",
         "redis_db",
@@ -221,6 +226,9 @@ class Settings(BaseSettings):
     llm_api_key: SecretStr | None = None
     llm_timeout_seconds: float = 60.0
     llm_max_retries: int = 1
+    llm_remote_data_policy_profile: RemoteDataPolicyProfile = (
+        RemoteDataPolicyProfile.DEFAULT
+    )
 
     redis_host: str = "127.0.0.1"
     redis_port: int = 6379
@@ -300,6 +308,20 @@ class Settings(BaseSettings):
             stripped = value.strip()
             if stripped == "":
                 return None
+            return stripped.upper()
+        return value
+
+    @field_validator("llm_remote_data_policy_profile", mode="before")
+    @classmethod
+    def _normalize_llm_remote_data_policy_profile(cls, value: Any) -> Any:
+        if value is None:
+            return RemoteDataPolicyProfile.DEFAULT
+        if isinstance(value, RemoteDataPolicyProfile):
+            return value
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped == "":
+                return RemoteDataPolicyProfile.DEFAULT
             return stripped.upper()
         return value
 
@@ -402,6 +424,17 @@ class Settings(BaseSettings):
     def _validate_llm_max_retries(cls, value: int) -> int:
         if value < 0 or value > 3:
             raise ValueError("LLM_MAX_RETRIES must be between 0 and 3")
+        return value
+
+    @field_validator("llm_remote_data_policy_profile", mode="after")
+    @classmethod
+    def _validate_llm_remote_data_policy_profile(
+        cls, value: RemoteDataPolicyProfile
+    ) -> RemoteDataPolicyProfile:
+        if not isinstance(value, RemoteDataPolicyProfile):
+            raise ValueError(
+                "LLM_REMOTE_DATA_POLICY_PROFILE must be DEFAULT or DEMO_APPROVED"
+            )
         return value
 
     @field_validator(

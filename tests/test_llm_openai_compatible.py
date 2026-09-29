@@ -19,6 +19,7 @@ from gov_service_agent.llm.types import (
     LlmProviderError,
     LlmRequest,
     LlmRole,
+    RemoteDataPolicyProfile,
 )
 from gov_service_agent.settings import Settings
 from types import SimpleNamespace
@@ -182,6 +183,85 @@ def test_policy_deny_user_pii_zero_calls() -> None:
     )
     with pytest.raises(LlmProviderError) as exc:
         provider.complete(_denied_request(DataClassification.USER_PII))
+    assert exc.value.code == LlmErrorCode.POLICY_DENIED
+    assert recorder.calls == []
+    assert recorder.sleeps == []
+
+
+def test_default_profile_user_free_text_zero_calls() -> None:
+    recorder = _Recorder()
+    provider = OpenAICompatibleLlmProvider(
+        base_url=_FAKE_URL,
+        api_key=_FAKE_KEY,
+        model_id=_FAKE_MODEL,
+        remote_data_policy_profile=RemoteDataPolicyProfile.DEFAULT,
+        client=httpx.Client(
+            transport=httpx.MockTransport(lambda r: (_ for _ in ()).throw(AssertionError()))
+        ),
+        sleep_fn=recorder.sleep,
+    )
+    with pytest.raises(LlmProviderError) as exc:
+        provider.complete(_denied_request(DataClassification.USER_FREE_TEXT))
+    assert exc.value.code == LlmErrorCode.POLICY_DENIED
+    assert recorder.calls == []
+    assert recorder.sleeps == []
+
+
+def test_demo_approved_user_free_text_allows_one_http_call() -> None:
+    recorder = _Recorder()
+    handler = _make_handler(
+        [httpx.Response(200, json=_ok_body(content='{"mapped":"ok"}'))],
+        recorder,
+    )
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    provider = OpenAICompatibleLlmProvider(
+        base_url=_FAKE_URL,
+        api_key=_FAKE_KEY,
+        model_id=_FAKE_MODEL,
+        remote_data_policy_profile=RemoteDataPolicyProfile.DEMO_APPROVED,
+        client=client,
+        sleep_fn=recorder.sleep,
+    )
+    response = provider.complete(_denied_request(DataClassification.USER_FREE_TEXT))
+    assert response.content == '{"mapped":"ok"}'
+    assert len(recorder.calls) == 1
+    assert recorder.sleeps == []
+
+
+def test_demo_approved_user_pii_allows_mock_http() -> None:
+    recorder = _Recorder()
+    handler = _make_handler(
+        [httpx.Response(200, json=_ok_body(content="synthetic-pii-ok"))],
+        recorder,
+    )
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    provider = OpenAICompatibleLlmProvider(
+        base_url=_FAKE_URL,
+        api_key=_FAKE_KEY,
+        model_id=_FAKE_MODEL,
+        remote_data_policy_profile=RemoteDataPolicyProfile.DEMO_APPROVED,
+        client=client,
+        sleep_fn=recorder.sleep,
+    )
+    response = provider.complete(_denied_request(DataClassification.USER_PII))
+    assert response.content == "synthetic-pii-ok"
+    assert len(recorder.calls) == 1
+
+
+def test_demo_approved_unknown_zero_calls() -> None:
+    recorder = _Recorder()
+    provider = OpenAICompatibleLlmProvider(
+        base_url=_FAKE_URL,
+        api_key=_FAKE_KEY,
+        model_id=_FAKE_MODEL,
+        remote_data_policy_profile=RemoteDataPolicyProfile.DEMO_APPROVED,
+        client=httpx.Client(
+            transport=httpx.MockTransport(lambda r: (_ for _ in ()).throw(AssertionError()))
+        ),
+        sleep_fn=recorder.sleep,
+    )
+    with pytest.raises(LlmProviderError) as exc:
+        provider.complete(_denied_request(DataClassification.UNKNOWN))
     assert exc.value.code == LlmErrorCode.POLICY_DENIED
     assert recorder.calls == []
     assert recorder.sleeps == []

@@ -10,6 +10,7 @@ from gov_service_agent.llm.types import (
     LlmProviderError,
     LlmRequest,
     LlmResponse,
+    RemoteDataPolicyProfile,
 )
 
 
@@ -82,12 +83,20 @@ def build_llm_provider(settings: object) -> LlmProvider:
 
         timeout = float(getattr(settings, "llm_timeout_seconds", 60.0))
         max_retries = int(getattr(settings, "llm_max_retries", 1))
+        profile = getattr(
+            settings,
+            "llm_remote_data_policy_profile",
+            RemoteDataPolicyProfile.DEFAULT,
+        )
+        if not isinstance(profile, RemoteDataPolicyProfile):
+            profile = RemoteDataPolicyProfile.DEFAULT
         return OpenAICompatibleLlmProvider(
             base_url=str(base_url).strip(),
             api_key=str(secret).strip(),
             model_id=str(model_id).strip(),
             timeout_seconds=timeout,
             max_retries=max_retries,
+            remote_data_policy_profile=profile,
         )
 
     raise LlmProviderError(

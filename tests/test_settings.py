@@ -15,6 +15,7 @@ from gov_service_agent.settings import (
     Settings,
     get_settings,
 )
+from gov_service_agent.llm.types import RemoteDataPolicyProfile
 
 _VALID_DATABASE_URL = (
     "postgresql+psycopg://govagent:change_me_local_only@"
@@ -38,6 +39,7 @@ _LLM_ENV_KEYS = (
     "LLM_API_KEY",
     "LLM_TIMEOUT_SECONDS",
     "LLM_MAX_RETRIES",
+    "LLM_REMOTE_DATA_POLICY_PROFILE",
 )
 
 
@@ -72,6 +74,10 @@ def test_defaults_without_env_file(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.llm_api_key is None
     assert settings.llm_timeout_seconds == 60.0
     assert settings.llm_max_retries == 1
+    assert (
+        settings.llm_remote_data_policy_profile
+        == RemoteDataPolicyProfile.DEFAULT
+    )
 
 
 @pytest.mark.parametrize(
@@ -546,6 +552,56 @@ def test_invalid_llm_max_retries(monkeypatch: pytest.MonkeyPatch, retries: int) 
         Settings(_env_file=None)
 
 
+def test_llm_remote_data_policy_profile_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("LLM_REMOTE_DATA_POLICY_PROFILE", raising=False)
+    settings = Settings(_env_file=None)
+    assert (
+        settings.llm_remote_data_policy_profile
+        == RemoteDataPolicyProfile.DEFAULT
+    )
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("DEFAULT", RemoteDataPolicyProfile.DEFAULT),
+        ("default", RemoteDataPolicyProfile.DEFAULT),
+        ("DEMO_APPROVED", RemoteDataPolicyProfile.DEMO_APPROVED),
+        ("demo_approved", RemoteDataPolicyProfile.DEMO_APPROVED),
+        ("  DEMO_APPROVED  ", RemoteDataPolicyProfile.DEMO_APPROVED),
+    ],
+)
+def test_valid_llm_remote_data_policy_profile(
+    monkeypatch: pytest.MonkeyPatch,
+    value: str,
+    expected: RemoteDataPolicyProfile,
+) -> None:
+    monkeypatch.setenv("LLM_REMOTE_DATA_POLICY_PROFILE", value)
+    settings = Settings(_env_file=None)
+    assert settings.llm_remote_data_policy_profile == expected
+
+
+def test_blank_llm_remote_data_policy_profile_becomes_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LLM_REMOTE_DATA_POLICY_PROFILE", "  ")
+    settings = Settings(_env_file=None)
+    assert (
+        settings.llm_remote_data_policy_profile
+        == RemoteDataPolicyProfile.DEFAULT
+    )
+
+
+def test_invalid_llm_remote_data_policy_profile_fail_fast(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LLM_REMOTE_DATA_POLICY_PROFILE", "TRUSTED")
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None)
+
+
 def test_llm_dotenv_keys_accepted(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -558,13 +614,20 @@ def test_llm_dotenv_keys_accepted(
         "LLM_BASE_URL=http://llm.test/v1\n"
         "LLM_API_KEY=test-secret\n"
         "LLM_TIMEOUT_SECONDS=60\n"
-        "LLM_MAX_RETRIES=1\n",
+        "LLM_MAX_RETRIES=1\n"
+        "LLM_REMOTE_DATA_POLICY_PROFILE=DEFAULT\n",
         encoding="utf-8",
     )
     settings = Settings(_env_file=str(env_file))
     assert settings.llm_provider == "DEMO"
+    assert (
+        settings.llm_remote_data_policy_profile
+        == RemoteDataPolicyProfile.DEFAULT
+    )
     assert "LLM_PROVIDER" in APPLICATION_DOTENV_KEYS
     assert "LLM_PROVIDER" in KNOWN_DOTENV_KEYS
+    assert "LLM_REMOTE_DATA_POLICY_PROFILE" in APPLICATION_DOTENV_KEYS
+    assert "LLM_REMOTE_DATA_POLICY_PROFILE" in KNOWN_DOTENV_KEYS
 
 
 def test_typo_llm_dotenv_key_fail_fast(

@@ -15,6 +15,7 @@ from gov_service_agent.llm.types import (
     LlmMessage,
     LlmRequest,
     LlmRole,
+    RemoteDataPolicyProfile,
 )
 
 
@@ -61,19 +62,34 @@ def test_remote_deny(classification: DataClassification) -> None:
     assert decision.reason_code == "POLICY_DENIED"
 
 
-def test_empty_classifications_are_unknown_deny() -> None:
-    assert evaluate_remote_policy(None).allowed is False
-    assert evaluate_remote_policy([]).allowed is False
-    assert evaluate_remote_policy(frozenset()).allowed is False
-    assert DataClassification.UNKNOWN in evaluate_remote_policy([]).denied_categories
+@pytest.mark.parametrize(
+    "profile",
+    [RemoteDataPolicyProfile.DEFAULT, RemoteDataPolicyProfile.DEMO_APPROVED],
+)
+def test_empty_classifications_are_unknown_deny(
+    profile: RemoteDataPolicyProfile,
+) -> None:
+    assert evaluate_remote_policy(None, profile=profile).allowed is False
+    assert evaluate_remote_policy([], profile=profile).allowed is False
+    assert evaluate_remote_policy(frozenset(), profile=profile).allowed is False
+    assert (
+        DataClassification.UNKNOWN
+        in evaluate_remote_policy([], profile=profile).denied_categories
+    )
 
 
-def test_missing_message_classifications_unknown_deny() -> None:
+@pytest.mark.parametrize(
+    "profile",
+    [RemoteDataPolicyProfile.DEFAULT, RemoteDataPolicyProfile.DEMO_APPROVED],
+)
+def test_missing_message_classifications_unknown_deny(
+    profile: RemoteDataPolicyProfile,
+) -> None:
     request = LlmRequest(messages=[_msg()])
     assert collect_request_classifications(request) == frozenset(
         {DataClassification.UNKNOWN}
     )
-    decision = evaluate_request_remote_policy(request)
+    decision = evaluate_request_remote_policy(request, profile=profile)
     assert decision.allowed is False
 
 
@@ -118,4 +134,82 @@ def test_policy_deterministic() -> None:
     }
     first = evaluate_remote_policy(classes)
     second = evaluate_remote_policy(classes)
+    assert first == second
+
+
+@pytest.mark.parametrize(
+    "classification",
+    [
+        DataClassification.PUBLIC_BUSINESS_METADATA,
+        DataClassification.SYSTEM_CONTROL_DATA,
+        DataClassification.SYNTHETIC_TEST_DATA,
+        DataClassification.USER_FREE_TEXT,
+        DataClassification.USER_PII,
+        DataClassification.HIGH_SENSITIVE_IDENTITY,
+        DataClassification.TO_CONFIRM_OR_INTERNAL,
+    ],
+)
+def test_demo_approved_allows_owner_business_classes(
+    classification: DataClassification,
+) -> None:
+    decision = evaluate_remote_policy(
+        {classification},
+        profile=RemoteDataPolicyProfile.DEMO_APPROVED,
+    )
+    assert decision.allowed is True
+    assert decision.denied_categories == frozenset()
+    assert decision.reason_code == "POLICY_ALLOWED"
+
+
+def test_demo_approved_unknown_deny() -> None:
+    decision = evaluate_remote_policy(
+        {DataClassification.UNKNOWN},
+        profile=RemoteDataPolicyProfile.DEMO_APPROVED,
+    )
+    assert decision.allowed is False
+    assert decision.denied_categories == frozenset({DataClassification.UNKNOWN})
+
+
+def test_demo_approved_multi_label_allow() -> None:
+    decision = evaluate_remote_policy(
+        {
+            DataClassification.USER_FREE_TEXT,
+            DataClassification.SYSTEM_CONTROL_DATA,
+        },
+        profile=RemoteDataPolicyProfile.DEMO_APPROVED,
+    )
+    assert decision.allowed is True
+
+
+def test_demo_approved_multi_label_pii_allow() -> None:
+    decision = evaluate_remote_policy(
+        {
+            DataClassification.USER_FREE_TEXT,
+            DataClassification.USER_PII,
+        },
+        profile=RemoteDataPolicyProfile.DEMO_APPROVED,
+    )
+    assert decision.allowed is True
+
+
+def test_demo_approved_multi_label_unknown_deny() -> None:
+    decision = evaluate_remote_policy(
+        {
+            DataClassification.USER_FREE_TEXT,
+            DataClassification.UNKNOWN,
+        },
+        profile=RemoteDataPolicyProfile.DEMO_APPROVED,
+    )
+    assert decision.allowed is False
+    assert decision.denied_categories == frozenset({DataClassification.UNKNOWN})
+
+
+def test_demo_approved_policy_deterministic() -> None:
+    classes = {
+        DataClassification.USER_FREE_TEXT,
+        DataClassification.USER_PII,
+    }
+    profile = RemoteDataPolicyProfile.DEMO_APPROVED
+    first = evaluate_remote_policy(classes, profile=profile)
+    second = evaluate_remote_policy(classes, profile=profile)
     assert first == second

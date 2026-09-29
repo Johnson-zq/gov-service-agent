@@ -731,7 +731,14 @@ Acceptance Criteria 覆盖类别：
 | **OI-F09-06** | Response composition | **RESOLVED** | NO | D08 / local deterministic composition |
 | **OI-F09-07** | AgentState layout | **RESOLVED** | NO | D09 / keep 7 fields；`artifacts["f09"]` |
 | **OI-F09-08** | LangGraph topology | **RESOLVED** | NO | D12 / preserve F08 default；add F09 specialized 7-node workflow |
-| **OI-F09-DP-001** | 真实 `USER_FREE_TEXT` → Remote Company LLM 仍 DENY；未来 Remote NLU 须 Owner Policy 授权 | **OPEN / NON-BLOCKING** | **NO** | D15（保持；不修改 F07 Policy） |
+| **OI-F09-DP-001** | 真实 `USER_FREE_TEXT` → Remote Company LLM：DEFAULT Profile 仍 DENY；F07 Policy Reopen 已落地显式 `DEMO_APPROVED`（Owner Demo 业务分类 MAY ALLOW）。**真实 Company Runtime 尚未验证**（RG-F12-004）。关闭条件 = F12 Resource Gate 真实 Remote USER_FREE_TEXT probe PASS | **OPEN / RUNTIME VALIDATION PENDING** | **NO** | F07 Policy Reopen：Requirement/TD/Code/Test/Review PASS；Runtime validation 仍 PENDING |
+
+**OI-F09-DP-001 进展（F07 Policy Reopen Explanation，不关闭）：**
+
+- F07 Policy Reopen：Requirement COMPLETE · TD COMPLETE · Code COMPLETE · Test PASS · Review PASS
+- Demo Remote `USER_FREE_TEXT` **Policy implementation 已具备**（须显式 `LLM_REMOTE_DATA_POLICY_PROFILE=DEMO_APPROVED`）
+- 真实 Company LLM Runtime：**尚未验证** → OI **保持 OPEN**
+- 真正关闭条件：F12 Resource Gate 真实 Remote USER_FREE_TEXT probe PASS
 
 **禁止（OI-F09-04）：** 仅为单个 Demo 句子做 `if "什么是社保转移"` 特例 hardcode。
 
@@ -743,7 +750,7 @@ Acceptance Criteria 覆盖类别：
 
 | 项 | 归属 |
 |----|------|
-| Real Remote NLU（真实 USER_FREE_TEXT → Company Provider） | 未来 Owner Policy authorization（OI-F09-DP-001） |
+| Real Remote NLU（真实 USER_FREE_TEXT → Company Provider） | F07 Policy Reopen 已就绪 Demo Profile；**Runtime validation** 仍属 F12 / OI-F09-DP-001（OPEN） |
 | 完整 Government Encyclopedia / FAQ / Public RAG | 未来 Feature；本 Feature 仅 `ExplanationService` 可替换 |
 | Actionable policy facts / eligibility 正式回答 | 未来受控知识能力 |
 | Comparison / multi-topic explanation（如「缴费和转移有什么区别」） | DEFERRED；当前 OTHER |
@@ -781,7 +788,7 @@ Requirement Findings 摘要保留：解释旁路正式冻结；Demo 解释≠事
 | Technical Design Finalization | **NOT REQUIRED** |
 | Decisions | **D01–D20** |
 | OI-F09-01…08 | **全部 RESOLVED** |
-| OI-F09-DP-001 | **OPEN / NON-BLOCKING** |
+| OI-F09-DP-001 | **OPEN / RUNTIME VALIDATION PENDING** |
 | BLOCKING | **0** |
 | Code / Tests this stage | **0** |
 
@@ -798,7 +805,7 @@ Requirement Findings 摘要保留：解释旁路正式冻结；Demo 解释≠事
 - LLM **不得**决定：business `next_node` / `business_id` / `candidate_business_id` / Rule result / materials / locations / channels / legal basis
 - **Agent Orchestration Routing**（LangGraph）≠ **Business Routing**（F04）
 - `EXPLANATION_REQUEST` 必须在 **任何 Company Remote call 之前**由 **本地确定性 detector** 识别
-- 真实 `USER_FREE_TEXT` → Company Remote = **DENY**（OI-F09-DP-001）
+- 真实 `USER_FREE_TEXT` → Company Remote：DEFAULT 仍 DENY；Demo Profile 已落地但 Runtime 未验证（OI-F09-DP-001 **OPEN / RUNTIME VALIDATION PENDING**）
 
 ### 16.3 Overall Architecture
 
@@ -1260,14 +1267,16 @@ OTHER     → resume_current_slot → complete → END
 
 ---
 
-### D15 — Data Policy（OI-F09-DP-001 保持 OPEN / NON-BLOCKING）
+### D15 — Data Policy（OI-F09-DP-001 保持 OPEN / RUNTIME VALIDATION PENDING）
 
 | Path | Classification | Company Remote |
 |------|----------------|----------------|
-| Answer Mapper request | **含** `USER_FREE_TEXT` | **DENY before network** |
+| Answer Mapper request | **含** `USER_FREE_TEXT` | **DEFAULT：DENY before network**；显式 **DEMO_APPROVED**：Policy 可 ALLOW（Owner Demo 授权）。**真实 Runtime 未验证** |
 | Explanation request | **仅** `SYSTEM_CONTROL_DATA` + `PUBLIC_BUSINESS_METADATA` | Demo **可行**（因无 raw user text） |
 
 **为什么 Demo Explanation 可行：** Local detector 已 normalize；`ExplanationRequest` 类型无 raw user field；Remote 仅 ALLOW 分类。**不是**放宽 `USER_FREE_TEXT` Policy。
+
+**F07 Policy Reopen 进展：** Demo Profile 实现已 Review PASS；`OI-F09-DP-001` **不关闭**，直至 F12 真实 Remote USER_FREE_TEXT probe PASS。
 
 Real Company Explanation Smoke = **OPTIONAL / OPT-IN**；非 Acceptance blocker。Default pytest：**0 network**。
 
@@ -1393,7 +1402,7 @@ Code-Reading **已提前计入**；后期不需 docs-only exception。
 | OI-F09-06 | **RESOLVED** — local composition：explanation/service text + F04 question_text |
 | OI-F09-07 | **RESOLVED** — 7 fields；`artifacts["f09"]` |
 | OI-F09-08 | **RESOLVED** — F08 default preserved；F09 specialized 7-node workflow |
-| OI-F09-DP-001 | **OPEN / NON-BLOCKING** |
+| OI-F09-DP-001 | **OPEN / RUNTIME VALIDATION PENDING** |
 
 ---
 
@@ -1444,7 +1453,7 @@ Code-Reading **已提前计入**；后期不需 docs-only exception。
 | BLOCKING | **0** |
 | MAJOR | **0** |
 | Final Planned Paths | **9** |
-| Data Policy Open Item | **OI-F09-DP-001 = OPEN / NON-BLOCKING** |
+| Data Policy Open Item | **OI-F09-DP-001 = OPEN / RUNTIME VALIDATION PENDING** |
 
 ### 21.1 Confirm Re-Verification（真实代码）
 
@@ -1500,13 +1509,13 @@ Code-Reading **已提前计入**；后期不需 docs-only exception。
 1. Requirement Scope A 与 TD D01–D20 / 9-path scope **一致**。
 2. 真实 F04/F07/F08 接口与 TD **无冲突**；无需 TD Finalization。
 3. Local-first Explanation Detection + `ExplanationRequest` 无 raw user 字段 → Data Policy 可机械执行。
-4. OI-F09-01…08 保持 RESOLVED；OI-F09-DP-001 保持 OPEN / NON-BLOCKING（非 Confirm blocker）。
+4. OI-F09-01…08 保持 RESOLVED；OI-F09-DP-001 保持 OPEN / RUNTIME VALIDATION PENDING（F07 Demo Policy 已落地；非 Confirm blocker；关闭待 F12 Runtime）。
 5. INFO-F09-01（F08 docs drift）继续 INFO；本 Confirm **不修改** F08。
 
 ### 21.5 Unresolved Findings
 
 **NONE**（blocking）。
-唯一保留 Open Item：OI-F09-DP-001（Real USER_FREE_TEXT → Company Remote = DENY）。
+唯一保留 Open Item：OI-F09-DP-001（F07 Demo Policy 已落地；真实 USER_FREE_TEXT Company Runtime 未验证；OPEN / RUNTIME VALIDATION PENDING）。
 
 ---
 
@@ -1871,9 +1880,9 @@ LangGraph **不会**因为 `mapped_value=transfer` 就自行选择业务 `next_n
 
 `0.80` 是 **Demo baseline**，不是标注集校准后的生产阈值；未来需 calibration 后再调。
 
-#### 实现了 Mapper ≠ 当前可 Remote
+#### 实现了 Mapper ≠ 真实 Runtime 已打通
 
-`LlmAnswerMapper` **已实现**，但注入 Company Remote Provider 时，真实用户回答仍 **DENY before network**。这不是功能没做完，而是 F07 Data Policy 明确禁止真实 `USER_FREE_TEXT` 远程发送（`OI-F09-DP-001` 仍 OPEN / NON-BLOCKING）。
+`LlmAnswerMapper` **已实现**。在 **DEFAULT** Profile 下，注入 Company Remote Provider 时真实用户回答仍 **DENY before network**。F07 Policy Reopen 后，显式 **DEMO_APPROVED** 可使 Policy **允许** `USER_FREE_TEXT` Remote Dispatch，但 **真实 Company LLM Runtime 尚未验证**（RG-F12-004 PENDING）。因此 `OI-F09-DP-001` 仍 **OPEN / RUNTIME VALIDATION PENDING**（非 CLOSED）。
 
 ### 5. `explanation.py`
 
@@ -2033,7 +2042,7 @@ Detector 是通用机制（解释句式 + topic + containment），不是 `if "�
 
 **不要说成“脱敏后可发”。** 准确说法：本地确定性提取的受控业务概念；原始 `USER_FREE_TEXT` 未进入 Remote Request。
 
-`OI-F09-DP-001`：**OPEN / NON-BLOCKING**（真实 USER_FREE_TEXT → Company Remote 仍 DENY）。
+`OI-F09-DP-001`：**OPEN / RUNTIME VALIDATION PENDING**（F07 Demo Policy 已落地；真实 USER_FREE_TEXT → Company Runtime 未验证；关闭条件 = F12 probe PASS）。
 
 ### 15. F04 / F07 / F08 / F10 / F11 / F12 Boundaries
 
@@ -2066,7 +2075,7 @@ Skipped 13 = 既有 DB / Embedding / Real LLM opt-in（PRE-EXISTING）。F09 ord
 
 | ID | Severity | Status / Note |
 |----|----------|---------------|
-| **RF-F09-001** | INFO | `OI-F09-DP-001` remains **OPEN / NON-BLOCKING** |
+| **RF-F09-001** | INFO | `OI-F09-DP-001` remains **OPEN / RUNTIME VALIDATION PENDING**（F07 Policy Reopen Review PASS；真实 Runtime 未验证） |
 | **RF-F09-002** | INFO | Stage status drift → **RESOLVED IN EXPLANATION DOC UPDATE** |
 | **RF-F09-003** | INFO | unused helper `interpretation_from_mapper_safe` → **DEFERRED / no functional impact**（本阶段不删；代码冻结） |
 | **RF-F09-004** | INFO | Demo substring safety guard → **accepted Demo boundary**；未来 Encyclopedia 拥有正式知识权威 |
