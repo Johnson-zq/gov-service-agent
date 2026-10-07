@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 
 import pytest
+from pydantic import ValidationError
 
 from gov_service_agent.agent import (
     AgentPhase,
@@ -157,7 +158,14 @@ from gov_service_agent.agent import (
     run_slot_interaction_workflow,
 )
 from gov_service_agent.agent.explanation import is_safe_explanation_text
+from gov_service_agent.business_data.models import load_snapshot
+from gov_service_agent.business_data.repository import JsonBusinessRepository
 from gov_service_agent.business_graph import load_decision_graph
+from gov_service_agent.business_graph.models import SourceConditionRef
+from gov_service_agent.session.models import (
+    SessionTurnPublicStatus,
+    SessionTurnSuccess,
+)
 from gov_service_agent.business_graph.transition import TransitionStatus as F04Status
 from gov_service_agent.llm.types import (
     DataClassification,
@@ -169,6 +177,18 @@ from gov_service_agent.llm.types import (
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 GRAPH_PATH = REPO_ROOT / "data" / "graphs" / "demo" / "social_security.json"
+DEMO_SS_001_PATH = REPO_ROOT / "data" / "demo" / "demo_ss_001.json"
+_EMPLOYMENT_VALUES = (
+    "self_employed_without_employees",
+    "part_time_without_employer_insurance",
+    "other_flexible_employment",
+)
+_EMPLOYMENT_MEANINGS = (
+    "无雇工的个体工商户",
+    "未在用人单位参加社会保险的非全日制从业人员",
+    "其他灵活就业人员",
+)
+_SEMANTIC_FAIL_TEXT = "当前办理选项的说明不完整，暂时无法继续确认这个选项。"
 
 
 class CapturingLlmProvider:
@@ -210,10 +230,12 @@ class CapturingLlmProvider:
 class FakeAnswerMapper:
     def __init__(self, output: AnswerMapperOutput | Exception) -> None:
         self.calls = 0
+        self.requests = []
         self._output = output
 
     def map_answer(self, request):  # type: ignore[no-untyped-def]
         self.calls += 1
+        self.requests.append(request)
         if isinstance(self._output, Exception):
             raise self._output
         return self._output
@@ -249,12 +271,28 @@ def _service_action_context(**overrides):  # type: ignore[no-untyped-def]
     return SlotInteractionContext(**data)
 
 
+class CallCountingRepository(JsonBusinessRepository):
+    def __init__(self, snapshots) -> None:  # type: ignore[no-untyped-def]
+        super().__init__(snapshots)
+        self.get_conditions_calls = 0
+
+    def get_conditions(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        self.get_conditions_calls += 1
+        return super().get_conditions(*args, **kwargs)
+
+
+def _demo_repository() -> CallCountingRepository:
+    snapshot = load_snapshot(DEMO_SS_001_PATH)
+    return CallCountingRepository({snapshot.business.business_id: snapshot})
+
+
 def _deps(
     *,
     mapper: FakeAnswerMapper | None = None,
     explanation: FakeExplanationService | None = None,
     graph=None,  # type: ignore[no-untyped-def]
     policy: MappingPolicy | None = None,
+    repository: JsonBusinessRepository | None = None,
 ) -> SlotInteractionDependencies:
     if mapper is None:
         mapper = FakeAnswerMapper(
@@ -274,10 +312,13 @@ def _deps(
         )
     if graph is None:
         graph = load_decision_graph(GRAPH_PATH)
+    if repository is None:
+        repository = _demo_repository()
     return SlotInteractionDependencies(
         answer_mapper=mapper,
         explanation_service=explanation,
         decision_graph=graph,
+        business_repository=repository,
         mapping_policy=policy or MappingPolicy(),
     )
 
@@ -319,7 +360,10 @@ def test_golden_explanation_workflow(monkeypatch: pytest.MonkeyPatch):
     ctx = _service_action_context(question_text=question)
     initial = create_initial_state("req-exp-001", "什么是社保转移？")
     before_slots = dict(ctx.current_slots)
-    final = run_slot_interaction_workflow(initial, ctx, _deps(mapper=mapper, explanation=explanation))
+    deps = _deps(mapper=mapper, explanation=explanation)
+    final = run_slot_interaction_workflow(initial, ctx, deps)
+    assert isinstance(deps.business_repository, CallCountingRepository)
+    assert deps.business_repository.get_conditions_calls == 0
     f09 = final["artifacts"]["f09"]
     assert final["phase"] is AgentPhase.COMPLETED
     assert mapper.calls == 0
@@ -356,6 +400,7 @@ def test_golden_explanation_remote_payload_minimization():
         ),
         explanation_service=LlmExplanationService(provider),
         decision_graph=load_decision_graph(GRAPH_PATH),
+        business_repository=_demo_repository(),
         mapping_policy=MappingPolicy(),
     )
     final = run_slot_interaction_workflow(
@@ -701,6 +746,7 @@ def test_explanation_provider_parse_and_unsafe(monkeypatch: pytest.MonkeyPatch):
             ),
             explanation_service=parse_svc,
             decision_graph=load_decision_graph(GRAPH_PATH),
+            business_repository=_demo_repository(),
             mapping_policy=MappingPolicy(),
         ),
     )
@@ -826,6 +872,285 @@ def test_repeated_slot_invocation_isolation():
     assert b["request_id"] == "b"
 
 
+def _forbid_f04(monkeypatch: pytest.MonkeyPatch) -> dict[str, int]:
+    calls = {"f04": 0}
+
+    def _boom(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        calls["f04"] += 1
+        raise AssertionError("F04 must not run")
+
+    monkeypatch.setattr(
+        "gov_service_agent.agent.nodes.advance_until_blocked",
+        _boom,
+    )
+    return calls
+
+
+def _employment_context() -> SlotInteractionContext:
+    return SlotInteractionContext(
+        transition_status=F04Status.NEED_SLOT,
+        current_node_id="employment_type",
+        required_slot="employment_type",
+        allowed_values=_EMPLOYMENT_VALUES,
+        question_text="您属于哪种灵活就业情况？",
+        invalid_value=None,
+        current_slots={
+            "service_action": "payment",
+            "payment_actor": "self_payment",
+        },
+    )
+
+
+def _employment_graph(refs: list[SourceConditionRef]):
+    graph = load_decision_graph(GRAPH_PATH)
+    nodes = []
+    for node in graph.nodes:
+        if node.node_id == "employment_type":
+            nodes.append(node.model_copy(update={"source_condition_refs": refs}))
+        else:
+            nodes.append(node)
+    return graph.model_copy(update={"nodes": nodes})
+
+
+def _employment_refs() -> list[SourceConditionRef]:
+    graph = load_decision_graph(GRAPH_PATH)
+    node = next(item for item in graph.nodes if item.node_id == "employment_type")
+    assert node.source_condition_refs
+    return list(node.source_condition_refs)
+
+
+def test_shenme_jiao_flexible_employment_stays_on_explanation_route(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = _forbid_f04(monkeypatch)
+    repository = _demo_repository()
+    mapper = FakeAnswerMapper(
+        AnswerMapperOutput(
+            kind=MapperUtteranceKind.SLOT_ANSWER,
+            mapped_value="other_flexible_employment",
+            confidence=1.0,
+        )
+    )
+    explanation = FakeExplanationService(
+        ExplanationResult(
+            status=ExplanationStatus.ANSWERED,
+            topic="灵活就业",
+            text="灵活就业是一个受控公共概念说明。",
+        )
+    )
+    ctx = _employment_context()
+    before_slots = dict(ctx.current_slots)
+    final = run_slot_interaction_workflow(
+        create_initial_state("req-jiao-exp", "什么叫灵活就业？"),
+        ctx,
+        _deps(
+            mapper=mapper,
+            explanation=explanation,
+            repository=repository,
+        ),
+    )
+    f09 = final["artifacts"]["f09"]
+    assert repository.get_conditions_calls == 0
+    assert mapper.calls == 0
+    assert explanation.calls == 1
+    assert explanation.requests[0].topic == "灵活就业"
+    assert calls["f04"] == 0
+    assert f09["interpretation"]["kind"] == UtteranceKind.EXPLANATION_REQUEST.value
+    assert f09["interpretation"]["explanation_topic"] == "灵活就业"
+    assert f09["validated_slot"] is None
+    assert f09["business_transition"] is None
+    assert f09["slot_context"]["current_slots"] == before_slots
+    assert ctx.current_slots == before_slots
+    assert "candidate_business_id" not in f09
+    assert "confirmed_business_id" not in f09
+    assert "candidate_business_id" not in final
+    assert "confirmed_business_id" not in final
+
+
+def _assert_semantic_contract_failure(
+    final: dict,
+    *,
+    kind: str,
+    reason: str,
+    user_text: str,
+) -> None:
+    assert final["phase"] is AgentPhase.COMPLETED
+    assert final["status"] is WorkflowStatus.COMPLETED
+    assert final["error"] is None
+    assert "confirmed_business_id" not in final
+    assert "f10" not in final["artifacts"]
+    assert "advance_business_graph" not in final["orchestration_trace"]
+    f09 = final["artifacts"]["f09"]
+    assert set(f09["failure"]) == {"kind", "safe_message"}
+    assert f09["failure"]["kind"] == kind
+    assert f09["failure"]["safe_message"] == reason
+    assert user_text not in f09["failure"].values()
+    assert f09["interpretation"] is None
+    assert f09["mapping_validation"] is None
+    assert f09["validated_slot"] is None
+    assert f09["business_transition"] is None
+    assert "confirmed_business_id" not in f09
+    assert f09["response_text"] == _SEMANTIC_FAIL_TEXT
+
+
+def test_repository_is_injected_not_constructed_by_node() -> None:
+    repository = _demo_repository()
+    deps = _deps(repository=repository)
+    assert deps.business_repository is repository
+
+
+def test_full_employment_mapping_uses_injected_semantics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = _demo_repository()
+    mapper = FakeAnswerMapper(
+        AnswerMapperOutput(
+            kind=MapperUtteranceKind.SLOT_ANSWER,
+            mapped_value="other_flexible_employment",
+            confidence=0.95,
+        )
+    )
+    calls = {"f04": 0}
+    real = __import__(
+        "gov_service_agent.agent.nodes", fromlist=["advance_until_blocked"]
+    ).advance_until_blocked
+
+    def _spy(*args, **kwargs):  # type: ignore[no-untyped-def]
+        calls["f04"] += 1
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(
+        "gov_service_agent.agent.nodes.advance_until_blocked",
+        _spy,
+    )
+    initial = create_initial_state("req-full-sem", "平时接零活，没有固定单位")
+    assert "confirmed_business_id" not in initial
+    deps = _deps(
+        mapper=mapper,
+        graph=load_decision_graph(GRAPH_PATH),
+        repository=repository,
+    )
+    final = run_slot_interaction_workflow(initial, _employment_context(), deps)
+    assert mapper.calls == 1
+    assert repository.get_conditions_calls > 0
+    assert deps.business_repository is repository
+    semantics = mapper.requests[0].allowed_value_semantics
+    assert semantics is not None
+    assert tuple(item.value for item in semantics) == _EMPLOYMENT_VALUES
+    assert tuple(item.meaning for item in semantics) == _EMPLOYMENT_MEANINGS
+    assert calls["f04"] == 1
+    assert final["artifacts"]["f09"]["mapping_validation"]["status"] == (
+        MappingValidationStatus.ACCEPTED.value
+    )
+    assert "confirmed_business_id" not in final
+
+
+def test_none_refs_keep_legacy_mapper_request() -> None:
+    repository = _demo_repository()
+    mapper = FakeAnswerMapper(
+        AnswerMapperOutput(
+            kind=MapperUtteranceKind.SLOT_ANSWER,
+            mapped_value="transfer",
+            confidence=0.80,
+        )
+    )
+    final = run_slot_interaction_workflow(
+        create_initial_state("req-none-sem", "我要转移"),
+        _service_action_context(),
+        _deps(mapper=mapper, repository=repository),
+    )
+    assert mapper.calls == 1
+    assert mapper.requests[0].allowed_value_semantics is None
+    assert repository.get_conditions_calls == 0
+    assert final["artifacts"]["f09"]["mapping_validation"]["status"] == (
+        MappingValidationStatus.ACCEPTED.value
+    )
+
+
+def test_partial_projection_fail_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = _forbid_f04(monkeypatch)
+    mapper = FakeAnswerMapper(
+        AnswerMapperOutput(
+            kind=MapperUtteranceKind.SLOT_ANSWER,
+            mapped_value="other_flexible_employment",
+            confidence=1.0,
+        )
+    )
+    user_text = "只覆盖了部分就业类型说明"
+    final = run_slot_interaction_workflow(
+        create_initial_state("req-partial", user_text),
+        _employment_context(),
+        _deps(
+            mapper=mapper,
+            graph=_employment_graph(_employment_refs()[:2]),
+            repository=_demo_repository(),
+        ),
+    )
+    assert mapper.calls == 0
+    assert calls["f04"] == 0
+    _assert_semantic_contract_failure(
+        final,
+        kind=InteractionFailureKind.SEMANTIC_PROJECTION_PARTIAL.value,
+        reason="partial_missing_values",
+        user_text=user_text,
+    )
+
+
+def test_invalid_projection_fail_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = _forbid_f04(monkeypatch)
+    mapper = FakeAnswerMapper(
+        AnswerMapperOutput(
+            kind=MapperUtteranceKind.SLOT_ANSWER,
+            mapped_value="other_flexible_employment",
+            confidence=1.0,
+        )
+    )
+    user_text = "引用了未公开条件"
+    final = run_slot_interaction_workflow(
+        create_initial_state("req-invalid", user_text),
+        _employment_context(),
+        _deps(
+            mapper=mapper,
+            graph=_employment_graph(
+                [
+                    SourceConditionRef(
+                        business_id="DEMO_SS_001",
+                        condition_id="cond-tc-01",
+                    )
+                ]
+            ),
+            repository=_demo_repository(),
+        ),
+    )
+    assert mapper.calls == 0
+    assert calls["f04"] == 0
+    _assert_semantic_contract_failure(
+        final,
+        kind=InteractionFailureKind.SEMANTIC_PROJECTION_INVALID.value,
+        reason="invalid_unapproved_ref",
+        user_text=user_text,
+    )
+
+
+def test_completed_turn_is_not_confirmed_business() -> None:
+    success = SessionTurnSuccess(
+        session_id="11111111-1111-4111-8111-111111111111",
+        request_id="22222222-2222-4222-8222-222222222222",
+        status=SessionTurnPublicStatus.COMPLETED,
+        response_text=_SEMANTIC_FAIL_TEXT,
+        requires_user_input=False,
+    )
+    assert "confirmed_business_id" not in SessionTurnSuccess.model_fields
+    assert "confirmed_business_id" not in success.model_dump()
+    with pytest.raises(ValidationError):
+        SessionTurnSuccess.model_validate(
+            {
+                **success.model_dump(mode="json"),
+                "confirmed_business_id": "DEMO_SS_001",
+            }
+        )
+
+
 # ---------------------------------------------------------------------------
 # F10 specialized terminal-confirmation workflow tests
 # ---------------------------------------------------------------------------
@@ -839,10 +1164,7 @@ from gov_service_agent.agent import (
     prepare_terminal_confirmation,
     resolve_terminal_confirmation,
 )
-from gov_service_agent.business_data.repository import JsonBusinessRepository
 from gov_service_agent.business_graph.transition import advance_until_blocked
-
-DEMO_SS_001_PATH = REPO_ROOT / "data" / "demo" / "demo_ss_001.json"
 
 
 def _f10_terminal_context():

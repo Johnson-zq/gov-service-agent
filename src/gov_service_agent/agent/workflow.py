@@ -43,6 +43,7 @@ from gov_service_agent.agent.terminal import (
     TerminalConfirmationMode,
     empty_f10_namespace,
 )
+from gov_service_agent.business_data.repository import JsonBusinessRepository
 from gov_service_agent.business_graph.models import DecisionGraph
 
 
@@ -75,6 +76,7 @@ class SlotInteractionDependencies:
     answer_mapper: AnswerMapper
     explanation_service: ExplanationService
     decision_graph: DecisionGraph
+    business_repository: JsonBusinessRepository
     mapping_policy: MappingPolicy = field(default_factory=MappingPolicy)
 
 
@@ -112,6 +114,7 @@ def build_slot_interaction_workflow(
             "explain_current_topic": "explain_current_topic",
             "validate_slot_answer": "validate_slot_answer",
             "resume_current_slot": "resume_current_slot",
+            "semantic_contract_failure": "complete",
         },
     )
     graph.add_edge("explain_current_topic", "resume_current_slot")

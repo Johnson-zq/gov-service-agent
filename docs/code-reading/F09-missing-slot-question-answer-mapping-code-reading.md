@@ -1,712 +1,576 @@
-# F09 Missing Slot / Question / Answer Mapping 代码阅读指南
+# F09 Missing Slot Mapping with Controlled Semantics 代码阅读指南
 
-缺失槽位交互、解释旁路、受控答案映射与 LangGraph 编排。
+这不是 Requirement，也不是 Technical Design，也不是 API Reference。
 
----
+本文按一次真实办理请求的顺序，说明 F09 如何把用户的一句话映射成当前节点允许的 machine value，以及这次 Reopen 增加的 controlled semantics 从哪里来、在哪里停下。
 
-## 文档定位
+权威记录：`docs/features/F09-missing-slot-question-answer-mapping.md`。只看本文也可以理解数据怎么走、从哪个函数开始读、出了问题先看哪里。
 
-这不是 Requirement、Technical Design，也不是 API Reference。
+**F09 负责：** 当 Business Decision Graph 停在一个缺失槽位时，理解用户这一轮自然语言，把它映射到当前节点明确允许的 controlled value。
 
-本文按**真实源码执行顺序**，带你从用户输入一路读到：
+这次 Reopen 增加的是 controlled allowed-value semantics。它没有改变 Business Decision Graph 的路径权、F04 的确定性转移、F10 的明确确认，也没有改变 F07 的远程数据策略。
 
-1. F04 确定性业务推进（`advance_until_blocked`）
-2. Explanation Side Route（解释旁路，不推进业务图）
-
-面向：项目维护、F10/F11/F12 后续开发、答辩、简历讲解、Agent/LangGraph 面试、以及几个月后重新打开项目时恢复上下文。
-
-权威 Feature 文档：`docs/features/F09-missing-slot-question-answer-mapping.md`
-
-| 验证项 | 结果 |
-|--------|------|
-| Interaction Targeted | **63 / 63 PASS** |
-| Workflow Targeted | **24 / 24 PASS** |
-| Combined Targeted | **87 / 87 PASS** |
-| Full Regression | **469 passed / 13 skipped / 0 failed / 0 warnings** |
-| Review | **PASS**（BLOCKING/MAJOR/MINOR = 0；INFO = 4；Review Fix = NOT REQUIRED） |
-| Real LLM / Company network | **NOT RUN / 0** |
+本文重点只在 F09。`semantics.py` 不是整个 Agent。
 
 ---
 
-## 1. 先知道 F09 在系统里干什么
+## 1. 先看业务问题
 
-**F04** 负责 Business Decision。它已经知道：当前节点、缺什么 slot、允许什么值、问用户什么问题。
+贯穿例子是 Golden。用户说：
 
-**F09** 负责理解用户**当前这句话**。例如：
+> 平时接零活，没有固定单位
 
-- 「平时接零活，没有固定单位」→ 可能是槽位回答
-- 「什么是社保转移？」→ 是解释请求，不是选择 transfer
+当前等待的槽位是 `employment_type`。当前节点允许的 machine value 只有：
 
-F09 **不会**自己决定业务图走哪里。
+| machine value | controlled meaning |
+|---------------|--------------------|
+| `self_employed_without_employees` | 无雇工的个体工商户 |
+| `part_time_without_employer_insurance` | 未在用人单位参加社会保险的非全日制从业人员 |
+| `other_flexible_employment` | 其他灵活就业人员 |
+
+期望映射是 `other_flexible_employment`。
+
+改造前，Mapper 只看到这三个英文枚举和用户原话。当时 Production 结果是：mapped value 正确，membership 通过，模型自报 confidence 为 `0.72`。本地门槛是 `0.80`，所以结论是 `LOW_CONFIDENCE`。这不是选错了值。缺口是模型缺少受控业务 wording。
+
+后来的小规模对照里，同一句在补上 meaning 之后 confidence 到了 `0.80`。这只是 `SMALL_SCALE_EVIDENCE_ONLY`。它不是新的 Production 运行结果，也不能写成真实模型现在一定不低于 `0.80`。
+
+---
+
+## 2. 一条真实请求是怎么走的
 
 ```text
-用户自然语言
+用户输入
         ↓
-F09 理解当前 utterance
+POST /api/v1/session/turn
         ↓
- ┌────────────────────┐
- │                    │
-真正回答槽位         解释当前概念
- │                    │
- ↓                    ↓
-AnswerMapper      Local Detector
- ↓                    ↓
-受控 mapping      ExplanationService
- ↓                    ↓
-membership        safety guard
-confidence             ↓
- ↓                  resume
-ACCEPTED?
- │
- yes
- ↓
-F04.advance_until_blocked
+SessionTurnService.handle_turn
         ↓
-Business Decision Graph
-```
-
-### 两个 Graph 不是一回事
-
-| Graph | 决定什么 |
-|-------|----------|
-| **LangGraph（Agent）** | 调用哪个程序能力：解释 / 校验 / 推进 / resume |
-| **Business Decision Graph（F04）** | 业务流程下一节点、候选事项 |
-
-LangGraph 不会因为 `mapped_value=transfer` 就自行 `goto transfer_node`。
-
----
-
-## 2. 推荐阅读顺序
-
-| 顺序 | 文件 | 为什么 |
-|------|------|--------|
-| 1 | `interaction.py` | F09 的“语言”：enum、context、policy、detector、validation |
-| 2 | `explanation.py` | 解释旁路的隐私边界与 Demo backend |
-| 3 | `nodes.py` | 能力如何变成 LangGraph execution nodes |
-| 4 | `workflow.py` | 节点如何连线；F08 默认图如何保留 |
-| 5 | `__init__.py` | 稳定 Public API vs private |
-| 6 | `tests/test_agent_interaction.py` | domain / security contract |
-| 7 | `tests/test_agent_workflow.py` | 真实 LangGraph + 真实 F04 集成 |
-
-**为什么先读 `interaction.py`：**
-若不先理解 `UtteranceKind` / `SlotInteractionContext` / `MappingPolicy` / `ValidatedSlot`，直接读 `nodes.py` 会看不懂 `artifacts["f09"]` 里传的是什么。
-
----
-
-## 3. `interaction.py` — F09 的语言
-
-路径：`src/gov_service_agent/agent/interaction.py`
-
-职责总览（按真实代码）：
-
-- Enum：`UtteranceKind` / `MapperUtteranceKind` / `MappingValidationStatus` / `InteractionFailureKind`
-- Models：`UtteranceInterpretation` / `AnswerMapperOutput` / `SlotInteractionContext` / `AnswerMappingRequest` / `ValidatedSlot` / `MappingValidationResult` / `InteractionFailure`
-- Policy：`MappingPolicy`
-- Protocol：`AnswerMapper`
-- Backend：`LlmAnswerMapper`
-- Validation：`validate_slot_mapping`
-- Detector：`detect_explanation_request`
-- Composition：`compose_*_response`
-- Serialization / artifacts helpers：`serialize_*` / `merge_f09_artifacts` / `empty_f09_namespace` 等
-
-> Note（RF-F09-003）：存在未使用 helper `interpretation_from_mapper_safe`；主链使用 `mapper_output_to_interpretation`。当前不影响功能，**本阶段不删**。
-
-### 3.1 `UtteranceKind`：这句话是什么性质？
-
-| 值 | 含义 | 例子 |
-|----|------|------|
-| `SLOT_ANSWER` | 在回答当前槽位 | System 问职工/灵活就业；User：「平时接零活，没有固定单位。」 |
-| `EXPLANATION_REQUEST` | 在问当前选项含义 | System 问缴费/转移/查询；User：「什么是社保转移？」 |
-| `UNCERTAIN` | 无法可靠理解 | 「我也说不清楚。」 |
-| `OTHER` | 与当前槽位无关 | 当前问办理类别；User：「大厅几点下班？」——F09 不负责通用大厅问答 |
-
-这是 **Agent 作用分类**，不是业务类目。
-
-### 3.2 `MapperUtteranceKind`：为什么没有 `EXPLANATION_REQUEST`
-
-Mapper 只有：`SLOT_ANSWER` / `UNCERTAIN` / `OTHER`。
-
-解释识别权必须留在 **Local Detector**。若先把原话发给 Remote LLM 问“这是回答还是解释？”，已违反 F07：`USER_FREE_TEXT` → Company Remote = **DENY**。
-
-### 3.3 `UtteranceInterpretation` 严格矩阵
-
-| kind | mapped_value | confidence | explanation_topic |
-|------|--------------|------------|-------------------|
-| `SLOT_ANSWER` | 必填非空 | 必填 finite∈[0,1] | 必须 None |
-| `EXPLANATION_REQUEST` | 必须 None | 必须 None | 必填非空 |
-| `UNCERTAIN` / `OTHER` | 必须 None | 必须 None | 必须 None |
-
-**为什么严格：** `EXPLANATION_REQUEST` 若同时带 `mapped_value=transfer`，会同时意味着“用户在提问”和“用户已选择 transfer”——危险。
-
-### 3.4 `SlotInteractionContext`：F04 → F09 桥梁
-
-**不是** Conversation Memory。它是一次 Slot Interaction 所需的确定性业务上下文。
-
-来源：`build_slot_interaction_context(TransitionResult, current_slots)` —— F04 adapter。
-
-| 字段 | 含义 |
-|------|------|
-| `transition_status` | 仅 `NEED_SLOT` / `INVALID_SLOT`——只有业务图需要用户输入时 F09 才介入 |
-| `current_node_id` | 当前业务节点（来自 F04） |
-| `required_slot` | 如 `employment_type`——来自 Business Graph，不是 LLM 猜 |
-| `allowed_values` | 确定性允许集合；Mapper 只提候选，Controller 做 membership |
-| `question_text` | 确定性业务问句——F09 **不让 LLM 自由生成** slot question |
-| `invalid_value` | `INVALID_SLOT` 时非空；`NEED_SLOT` 时必须 None |
-| `current_slots` | 已填槽位副本；ACCEPTED 后需「原 slots + 新 validated」交回 F04 |
-
-### 3.5 `AnswerMappingRequest` / `AnswerMapper` / `LlmAnswerMapper`
-
-```text
-AnswerMappingRequest(required_slot, allowed_values, user_text)
+识别会话，必要时从 Redis checkpoint 恢复
         ↓
-AnswerMapper.map_answer  （Protocol；orchestration 不绑厂商）
+AgentTurnProcessor.process_turn
         ↓
-LlmAnswerMapper：构造 LlmRequest → F07 Provider → parse_structured_output
+当前 Business Decision Graph 停在 NEED_SLOT
         ↓
-AnswerMapperOutput → mapper_output_to_interpretation → UtteranceInterpretation
-```
-
-Prompt 边界：只做当前 slot → `allowed_values` mapping；禁止输出 `next_node` / `business_id` / materials 等。
-
-**`USER_FREE_TEXT` Classification（关键）：**
-`LlmAnswerMapper` **已实现**，但注入 Company Remote 时，真实用户回答仍 **DENY before network**。因为 `LlmRequest` 明确声明 `USER_FREE_TEXT`。这是策略，不是没做完（`OI-F09-DP-001` OPEN / NON-BLOCKING）。
-
-### 3.6 `MappingPolicy` / `validate_slot_mapping` / `ValidatedSlot`
-
-- `MappingPolicy.min_confidence = 0.80`（frozen dataclass）——**Demo baseline**，未来需 calibration
-- threshold 单一来源：不在 Prompt / Graph / Settings / node 散落
-
-`validate_slot_mapping` 步骤：
-
-1. 是否 `SLOT_ANSWER`？否 → `NOT_SLOT_ANSWER`
-2. `mapped_value ∈ allowed_values`？否 → `INVALID_VALUE`
-3. `confidence >= policy.min_confidence`？否 → `LOW_CONFIDENCE`
-4. 两项 PASS → `ACCEPTED` + 创建 `ValidatedSlot`
-
-**Membership first：** `invented_value` + confidence `1.0` → 仍 `INVALID_VALUE`。confidence 是模型自报，**不是** Business Contract。
-
-**`AnswerMapperOutput` ≠ `ValidatedSlot`。** 只有 ValidatedSlot 可交给 F04。
-
-### 3.7 Local Explanation Detector
-
-真实入口：`detect_explanation_request(user_text, question_text)`
-
-```text
-user input
-  → generic explanation patterns（什么是 X / X是什么意思 / 请解释一下 X …）
-  → topic extraction + normalize + 长度 ≤64
-  → question_text containment（Topic Trust Gate）
-  → EXPLANATION_REQUEST
-```
-
-- **高精度优先于召回：**「我要办社保转移」不应误判为 Explanation
-- **Generic：** 不是 `if "社保转移"`；「什么是事项A？」也可工作
-- **Unknown topic：** question 不含「养老金计算」→ 不进 ExplanationService
-- **Comparison deferred：**「缴费和转移有什么区别？」→ 安全 miss
-
-### 3.8 Failure / Response Composition
-
-`InteractionFailureKind`：
-
-- `MAPPER_PROVIDER_ERROR` / `MAPPER_PARSE_ERROR`
-- `EXPLANATION_PROVIDER_ERROR` / `EXPLANATION_PARSE_ERROR`
-- `EXPLANATION_UNSAFE_OUTPUT`
-
-**不能都叫 UNCERTAIN：**「用户说不清」≠「Provider 挂了」。
-
-Composition 全部 **LOCAL deterministic**（`compose_explanation_response` 等）：
-
-- 成功解释：safe text + **exact original** `question_text`
-- 失败 / Uncertain / Other / Invalid / LowConfidence：固定前缀 + 原问句
-LLM **不重写** slot question。
-
----
-
-## 4. `explanation.py` — 如何安全解释
-
-路径：`src/gov_service_agent/agent/explanation.py`
-
-`interaction.py` 回答「这句话是什么性质？」；`explanation.py` 回答「若是解释请求，如何安全解释？」。
-
-### 4.1 `ExplanationRequest` 机械隐私
-
-```text
-ExplanationRequest {
-  topic            # 本地提取的受控当前业务概念（不是“脱敏用户文本”）
-  public_context   # 可选 PUBLIC_BUSINESS_METADATA；Demo 常为空
-}
-```
-
-**没有** `user_text` / `input_text` / `question_text` / `history` / `reasoning`。
-
-这不是 Prompt 写“别发原话”，而是 **接口本身拿不到** 原始用户输入。
-
-### 4.2 Status / Result / Protocol
-
-| `ExplanationStatus` | 含义 |
-|---------------------|------|
-| `ANSWERED` | 有非空 text（≤500） |
-| `UNSUPPORTED` | 不支持 / 不安全；`text` 必须 None |
-| `UNAVAILABLE` | Provider/Parse 失败；`text` 必须 None |
-
-`ExplanationService` Protocol：`explain(request) -> ExplanationResult`。
-
-```text
-F09 Workflow
-      ↓
-ExplanationService
-      ↓
-当前：LlmExplanationService
-未来：GovernmentEncyclopediaExplanationService
-      ↓
-FAQ / Public RAG / Knowledge Graph → controlled facts →（可选）LLM wording
-```
-
-F09 orchestration **无需推倒重写**。
-
-### 4.3 `LlmExplanationService` 与 Data Policy
-
-```text
-ExplanationRequest
-  → controlled prompt（topic + optional public_context）
-  → LlmRequest（SYSTEM_CONTROL_DATA + PUBLIC_BUSINESS_METADATA；无 USER_FREE_TEXT）
-  → Provider → parse_structured_output(ExplanationStructuredOutput)
-  → ExplanationResult(ANSWERED, text=...)
-```
-
-对比：
-
-| 路径 | 输入 | Classification | Company Remote |
-|------|------|----------------|----------------|
-| Answer Mapping | raw `user_text` | `USER_FREE_TEXT` | **DENY** |
-| Explanation | local controlled topic | ALLOW classes | **可用（Demo）** |
-
-Remote **不发送** raw user sentence / full `question_text` / conversation history。
-
-Strict JSON：仅 `{"explanation":"..."}`，`extra="forbid"`——不能接受 materials / location / `business_id`。Company LLM **不是** Business Knowledge Source。
-
-### 4.4 Safety Guard（Demo）
-
-`is_safe_explanation_text` + `_HIGH_RISK_MARKERS`（材料、携带、窗口、地址、费用、金额、时限、工作日、法律/政策依据、资格条件、符合条件、办理条件等）。
-
-- **Whole-response fail-closed**：命中则整条不展示，不是删一句继续说
-- **Guard 在 Agent node 统一执行**（`_make_explain_current_topic_node` + `_resume_current_slot_node` 二次检查）——未来换 Encyclopedia 也不能自动绕过当前 F09 guard
-- RF-F09-004：这是 Demo guardrail，不是正式政策审查器；正式知识权威归未来 Encyclopedia
-
----
-
-## 5. `nodes.py` — 编排节点
-
-路径：`src/gov_service_agent/agent/nodes.py`
-**不定义 Business Truth**；把 domain capability 组成 LangGraph execution nodes。
-
-### 5.1 七个 Execution Nodes（真实符号）
-
-| Graph 节点名 | 实现 |
-|--------------|------|
-| `prepare` | `_prepare_node` |
-| `interpret_slot_input` | `_make_interpret_slot_input_node(deps)` |
-| `explain_current_topic` | `_make_explain_current_topic_node(deps)` |
-| `validate_slot_answer` | `_make_validate_slot_answer_node(deps)` |
-| `advance_business_graph` | `_make_advance_business_graph_node(deps)` |
-| `resume_current_slot` | `_resume_current_slot_node` |
-| `complete` | `_complete_node` |
-
-两个 pure routers：`_route_by_interpretation` / `_route_by_validation`。
-
-### 5.2 `interpret_slot_input`（阅读重点）
-
-1. `validate_agent_state`
-2. 读 `state["input_text"]`
-3. 读 controlled `slot_context`
-4. **`detect_explanation_request` FIRST**（安全边界 / Data Policy，不是 UX 优化）
-5. hit → `EXPLANATION_REQUEST`；**Mapper 0 call**
-6. miss → `deps.answer_mapper.map_answer`
-7. 已知错误：仅 catch `LlmProviderError` / `StructuredParseError` → distinct `InteractionFailureKind`；**禁止 broad catch**（编程 Bug 不能伪装成“用户不清楚”）
-8. 写入 controlled `interpretation`（JSON-safe）
-
-### 5.3 `explain_current_topic` — **0 F04**
-
-1. 读 `explanation_topic`
-2. 构造 `ExplanationRequest(topic=..., public_context={})`
-3. `deps.explanation_service.explain`
-4. Provider/Parse → UNAVAILABLE + failure kind
-5. ANSWERED 时 **node 级** `is_safe_explanation_text`；不安全 → UNSUPPORTED + `EXPLANATION_UNSAFE_OUTPUT`
-6. 写 `explanation` artifact
-
-不 merge slots；不调用 Business Graph。
-
-### 5.4 `validate_slot_answer`
-
-纯 deterministic：`validate_slot_mapping` + policy。无 Provider / LLM / network / F04。
-
-### 5.5 `advance_business_graph` — **唯一 F04 调用点**
-
-1. 断言 `mapping_validation.status == ACCEPTED`
-2. 读 `ValidatedSlot`
-3. `copy.deepcopy(current_slots)` + 写入新值
-4. `advance_until_blocked(deps.decision_graph, current_node_id, new_slots)`
-5. `serialize_transition_result` → `business_transition`
-
-**禁止** `if value == transfer: next_node = ...`。Business Graph 已在 F04。
-
-序列化字段含：`status` / `current_node_id` / `required_slot` / `invalid_value` / `allowed_values` / `question_text` / `candidate_business_id` / `unsupported_reason` / `visited_node_ids` / `traversed_edge_ids`。
-
-`candidate_business_id` 若存在，**只来自 F04**。`TERMINAL_CANDIDATE` = 候选事项 ≠ 用户已确认（**F10 未做**，故无 `confirmed_business_id`）。
-
-### 5.6 `resume_current_slot` / `complete`
-
-- resume：按 interpretation / explanation / failure 做本地 composition
-- `complete`：**Agent invocation complete** ≠ Business complete
-
-### 5.7 `artifacts["f09"]`
-
-```text
-artifacts
-└── f09
-    ├── slot_context
-    ├── interpretation
-    ├── mapping_validation
-    ├── validated_slot
-    ├── explanation
-    ├── business_transition
-    ├── failure
-    └── response_text
-```
-
-- 为何用 namespace：F08 `AgentState` 仍 7 个 top-level fields，不为每个 Feature 加顶层字段
-- JSON-safe：Enum → str；tuple → list；Pydantic → `model_dump(mode="json")`；不把 Exception / Protocol / Graph / Provider 扔进 State
-- 不重复存 raw user：`AgentState.input_text` 已有
-- `merge_f09_artifacts`：更新 f09 时保留其它 feature namespaces
-- `run_slot_interaction_workflow`：每次 **fresh** `empty_f09_namespace`，避免上一轮 explanation/mapping/transition 污染
-
----
-
-## 6. `workflow.py` — 节点如何连起来
-
-路径：`src/gov_service_agent/agent/workflow.py`
-
-### 6.1 F08 默认图（完全保留）
-
-```text
-START → prepare → complete → END
-```
-
-`build_agent_workflow` / `run_agent_workflow` 语义未改。F08 = Foundation；F09 = specialized capability；完整 E2E 留给 F12。
-
-### 6.2 `SlotInteractionDependencies`（真实字段名）
-
-| 字段 | 含义 |
-|------|------|
-| `answer_mapper` | `AnswerMapper` |
-| `explanation_service` | `ExplanationService` |
-| `decision_graph` | F04 `DecisionGraph` |
-| `mapping_policy` | `MappingPolicy`（默认 0.80） |
-
-**不进 AgentState：** Provider / Graph / Service / Policy 不是对话状态，也不可 JSON serialize。
-
-### 6.3 F09 Specialized Topology
-
-```text
-START
-  ↓
-prepare
-  ↓
+run_slot_interaction_workflow
+        ↓
 interpret_slot_input
-  ↓
- ┌─────────────────────────────────┐
- │               │                 │
-Explanation   Slot Answer     Uncertain / Other
- │               │                 │
- ↓               ↓                 ↓
-explain       validate            resume
- │               ↓                 │
- ↓          accepted?              │
-resume       /       \              │
- │         yes       no             │
- │          ↓         ↓             │
- │        F04       resume           │
- │          ↓         ↓             │
- └──────────┴─────────┴─────────────┘
-              ↓
-           complete
-              ↓
-             END
+        ↓
+detect_explanation_request
+        ↓
+命中解释请求 → 解释旁路，不选择 value
+        ↓
+正常回答 → 读当前 node
+        ↓
+required_slot / allowed_values / source_condition_refs
+        ↓
+deps.business_repository
+        ↓
+project_allowed_value_semantics
+        ↓
+SemanticProjectionResult
+        ↓
+FULL  → enriched AnswerMappingRequest → LlmAnswerMapper
+NONE  → legacy AnswerMappingRequest → LlmAnswerMapper
+PARTIAL / INVALID → fail closed，不调用模型
+        ↓
+Provider 仍经过 F07
+        ↓
+AnswerMapperOutput
+        ↓
+mapper_output_to_interpretation
+        ↓
+validate_slot_mapping
+        ↓
+先 membership，再 confidence >= 0.80
+        ↓
+只有 ACCEPTED → advance_until_blocked
+        ↓
+F04 确定性转移
+        ↓
+新的受控槽位进入后续图状态
+        ↓
+以后到达 Terminal Candidate，仍要 F10 明确确认
+        ↓
+checkpoint 保存 + Audit
+        ↓
+API 返回本轮结果
 ```
 
-- Router 1 `_route_by_interpretation`：按 `interpretation.kind`
-- Router 2 `_route_by_validation`：仅 `ACCEPTED` → `advance_business_graph`
-- Router **pure**：0 LLM / 0 Provider / 0 F04 / 0 network
-
-### 6.4 `run_slot_interaction_workflow`
-
-1. validate input state
-2. deep copy（caller state / slots / artifacts 不被原地修改）
-3. fresh `artifacts["f09"]` + 注入 serialized slot context
-4. `build_slot_interaction_workflow(deps).invoke`
-5. validate final state → return
+下面每一步只定位入口、输入、输出和下一步。文件地图放在第 18 节。
 
 ---
 
-## 7. `__init__.py` — Public vs Private
+## 3. F09 在整个 Agent 中的位置
 
-路径：`src/gov_service_agent/agent/__init__.py`
-**不是实现文件**；定义稳定 Python API。
+```text
+Client
+  → Session API          src/gov_service_agent/session/api.py
+  → Redis / checkpoint   src/gov_service_agent/session/store.py
+  → Agent workflow
+  → F09 缺失槽位          本文
+  → F04 确定性前行        business_graph/transition.py
+  → 以后 F10 确认         agent/terminal.py
+  → checkpoint save + Audit
+  → API response
+```
 
-**Public 示例：** `UtteranceKind`、`AnswerMapper`、`LlmAnswerMapper`、`ExplanationService`、`LlmExplanationService`、`MappingPolicy`、`validate_slot_mapping`、`build_slot_interaction_context`、`SlotInteractionDependencies`、`build_slot_interaction_workflow`、`run_slot_interaction_workflow`，以及 F08 `AgentState` / `build_agent_workflow` 等。
+F11 的位置用一句话就够：`session_turn` 调用 `SessionTurnService.handle_turn`。已有会话走 `_handle_existing_session`，用 `load_active_session` 取出 checkpoint，再 `from_persisted` 恢复状态。`AgentTurnProcessor.process_turn` 跑本轮 Agent。成功后 `commit_successful_turn` 同时写入新 checkpoint 和 `TURN_COMPLETED` audit。F09 只处理“图正在等一个槽位回答”的那一段，不是会话存储，也不是最终事项确认。
 
-**Private（不 export）：** `_EXPLANATION_PATTERNS`、`_HIGH_RISK_MARKERS`、node factories、routers、`detect_explanation_request`（测试可从模块导入）、prompt 拼装细节。
-
----
-
-## 8. `test_agent_interaction.py` — Domain / Security Contracts
-
-路径：`tests/test_agent_interaction.py`（**63 passed**）
-
-主题（不逐函数抄录）：strict model matrix、confidence finite/range、context NEED_SLOT/INVALID_SLOT、mapping membership/threshold、detector 通用性 / unknown topic / comparison miss、`ExplanationRequest` 禁 raw 字段、Mapper `USER_FREE_TEXT`、Explanation ALLOW 分类、strict JSON、safety markers、composition、serialization。
-
-**为何比“接口能跑”更重要：** F09 最大风险不是语法错误，而是**业务误推进**或**数据越权发送**。
-
-关键断言方向：
-
-- NaN / ±Inf reject
-- invented + 1.0 → `INVALID_VALUE`
-- 0.79 → `LOW_CONFIDENCE`；0.80 → 可 ACCEPTED
-- generic detector；unknown topic 不进服务
-- `ExplanationRequest` 拒绝 `user_text` 等
-- Mapper 含 `USER_FREE_TEXT`；Explanation 不含
+`AgentState` 本身没有 `business_id`。当前槽位上下文放在 `artifacts["f09"].slot_context`，类型是 `SlotInteractionContext`。它在图返回 `NEED_SLOT` 或 `INVALID_SLOT` 时形成，字段包括 `current_node_id`、`required_slot`、`allowed_values`、`question_text`。
 
 ---
 
-## 9. `test_agent_workflow.py` — LangGraph 真正串起来
+## 4. 当前 slot 上下文从哪里来
 
-路径：`tests/test_agent_workflow.py`（含 F08 + F09，**24 passed**）
+入口函数是 `nodes._interpret_slot_input`，由 `_make_interpret_slot_input_node(deps)` 闭包提供。`build_slot_interaction_workflow` 把它挂在 `prepare` 之后。
 
-### 9.1 Golden Explanation（核心）
-
-Input：`什么是社保转移？`
-
-| 断言 | 结果 |
+| 项目 | 内容 |
 |------|------|
-| Mapper calls | **0** |
-| Explanation calls | **1** |
-| F04 calls | **0** |
-| `validated_slot` | **None** |
-| `business_transition` | **None** |
-| current node preserved | **YES** |
-| original question resumed | **YES** |
+| 模块 | `src/gov_service_agent/agent/nodes.py` |
+| 函数 | `_interpret_slot_input` |
+| 输入 | `AgentState.input_text`；`artifacts["f09"].slot_context`；`deps` |
+| 输出 | 更新后的 `artifacts["f09"]`：解释结果、映射结果，或语义契约失败 |
+| 下一步 | `_route_by_interpretation` |
 
-**为什么核心：** 证明「提到一个选项」≠「选择这个选项」。
+`slot_context` 回答三个问题：
 
-Generic「什么是事项A？」证明 **非社保 hardcode**。
+| 字段 | 业务含义 |
+|------|----------|
+| `required_slot` | 当前要回答的字段，例如 `employment_type` |
+| `allowed_values` | 当前唯一合法的 machine value 集合 |
+| 当前 node 上的 `source_condition_refs` | 从图指向 Business Data 的受控引用；不在 `SlotInteractionContext` 里，要从 Decision Graph node 再读 |
 
-### 9.2 Remote Privacy / Question Sentinel
-
-- raw 进入 `AgentState.input_text`
-- `CapturingLlmProvider` 最终 payload **无** raw sentence
-- `question_text` 放入 local-only sentinel → Remote **无**该 sentinel
-- classification **无** `USER_FREE_TEXT`
-
-### 9.3 Accepted Mapping + 真实 F04
-
-Fake Mapper **只返回**预定 `AnswerMapperOutput`（不复制 Production NLU）。然后：
-
-Production `validate_slot_mapping` + **真实** demo graph + **真实** `advance_until_blocked`。
-
-F04 **不能**用假 terminal 冒充——因为架构承诺是：Business next_node 由 F04 决定。
-
-结果可到 `TERMINAL_CANDIDATE`，`candidate_business_id=DEMO_SS_001`（来自 F04）；**无** `confirmed_business_id`（F10）。
-
-另有：hallucinated → `INVALID_VALUE`；合法值 0.79 → no F04；Provider/Parse/Unsafe 分 failure kind；other namespace preserved / stale f09 refreshed / caller 不变 / 重复调用隔离。
+用户原话来自 `state["input_text"]`，不是从 checkpoint 里的旧句子重读。
 
 ---
 
-## 10. 三条最重要代码主线
+## 5. Explanation 为什么先判断
 
-### 主线 A：Answer Path
+问含义和选择选项是两件事。用户说“什么是灵活就业？”时，是在问当前问题里的词，不是在选择 `other_flexible_employment`。
+
+`detect_explanation_request(user_text, question_text)` 是本地正则，不访问网络。它在 `_interpret_slot_input` 的第一件事。命中后直接返回 `EXPLANATION_REQUEST`，后面的 Repository、投影和 Mapper 都不会执行，也不会写 slot，也不会进入 F04。路由去 `explain_current_topic`，再回到 `resume_current_slot`，把原来的问题再问一遍。
+
+当前 detector 用本地确定性句式识别常见解释问法。原有“什么是……”“……是什么意思”“……是指什么”“请解释一下……”仍然有效。`employment_type` 的问题含有“灵活就业”，所以“什么是灵活就业？”和“什么叫灵活就业？”都会进入 `EXPLANATION_REQUEST`。“什么叫 <topic>”是整句锚定规则，由 `detect_explanation_request` 识别。它不是 `if "叫" in text`。捕获出的 topic 仍经过 `_normalize_topic_candidate`，并且必须出现在当前 `question_text` 里。与当前问题无关的“什么叫 X”不会自动变成这个槽位的解释。
+
+因此下面这些句子不会因为含有“叫”而被判成解释请求：“我叫张三”“这个项目叫自由职业”“他们叫我去窗口办理”。
+
+命中后 Repository 查询为 0，semantic projection 为 0，Answer Mapper 为 0，F04 为 0，也不写 slot。解释结束后 `resume_current_slot` 把原来的问题接回来，继续等待 `employment_type`。Code-Reading 阶段曾发现“什么叫……”当时尚未支持；该缺口已由 `F09-CR-MAJOR-01` 修复。Golden“平时接零活，没有固定单位”仍不是解释请求，继续走 semantic projection 和 enriched mapping。
+
+对应行为看 `tests/test_agent_workflow.py` 里的解释工作流：解释命中时 Mapper 调用次数为 0，`get_conditions` 次数为 0，F04 次数为 0。
+
+---
+
+## 6. source_condition_refs 是什么
+
+F09 发生时还没有 `confirmed_business_id`。`employment_type` 节点在图数据里已经带着引用：
 
 ```text
-F04 NEED_SLOT
-  → SlotInteractionContext
-  → interpret_slot_input
-  → AnswerMapper
-  → AnswerMapperOutput
-  → UtteranceInterpretation(SLOT_ANSWER)
-  → validate_slot_mapping
-  → membership → confidence >= 0.80
-  → ValidatedSlot
-  → advance_business_graph
-  → F04.advance_until_blocked
-  → TransitionResult
+business_id   = DEMO_SS_001
+condition_id  = cond-applicant-01
+                cond-applicant-02
+                cond-applicant-03
 ```
 
-### 主线 B：Explanation Path
+`SourceConditionRef` 定义在 `business_graph/models.py`，只有 `business_id` 和 `condition_id`。
 
-```text
-raw input
-  → interpret_slot_input
-  → Local Explanation Detector
-  → normalized topic
-  → EXPLANATION_REQUEST
-  → explain_current_topic
-  → ExplanationRequest（无 raw input）
-  → ExplanationService
-  → strict structured result
-  → local safety guard
-  → resume_current_slot
-  → safe explanation + original question_text
-```
+`ref.business_id` 是 `JsonBusinessRepository` 的查找键。它不是 `candidate_business_id`，不是 `confirmed_business_id`，也不是用户已经选定的事项。
 
-### 主线 C：Security Path
-
-```text
-Answer Mapping：
-  raw USER_FREE_TEXT → LlmAnswerMapper → LlmRequest(USER_FREE_TEXT)
-  → Company Remote → F07 DENY
-
-Explanation：
-  raw USER_FREE_TEXT → LOCAL detector → controlled topic
-  → ExplanationRequest → SYSTEM_CONTROL_DATA + PUBLIC_BUSINESS_METADATA
-  → Company Remote → ALLOW
-```
-
-### 主线 D：Business Authority
-
-```text
-LLM 只给 candidate value + confidence
-  → Controller：membership + confidence
-  → F04：business next node / candidate
-  → F10（未来）：user final confirmation / confirmed_business_id
-```
+如果必须先确认事项才能读 wording，读完 wording 才能映射，映射完才能确认事项，就会绕回去。当前图节点上的引用在确认之前就存在，所以不存在 F09 依赖 F10、F10 又依赖 F09 的循环。`confirmed_business_id` 只在以后的 F10 里，由 `assign_confirmed_business_id` 在校验 READY 且用户明确 CONFIRMED 时写入。
 
 ---
 
-## 11. Feature 边界对照
+## 7. Business Data 如何变成 controlled semantics
 
-| Feature | 职责 |
-|---------|------|
-| **F04** | Business deterministic transition（`advance_until_blocked`） |
-| **F06** | Initial semantic retrieval；F09 **不对每轮 slot answer 做 RAG** |
-| **F07** | LLM Provider / Parser / Data Policy；F09 消费不改 Policy |
-| **F08** | AgentState / base LangGraph；F09 保留默认图 |
-| **F09** | Missing-slot interaction + Explanation Side Route |
-| **F10** | Terminal confirmation / confirmed business_id |
-| **F11** | Session / Redis / checkpoint / audit |
-| **F12** | E2E composition |
+投影函数是 `project_allowed_value_semantics`，在 `business_data/semantics.py`。
 
----
+它解决的问题是：图知道哪些 machine value 合法，Business Data 知道公开 wording，投影把二者确定地对齐。
 
-## 12. 常见误解
-
-1. **LangGraph 决定业务流程** → 否；LangGraph 只做 orchestration。
-2. **LLM confidence 高就能推进** → 否；必须 membership + threshold。
-3. **「什么是社保转移？」= 选择 transfer** → 否；`EXPLANATION_REQUEST`。
-4. **实现了 `LlmAnswerMapper` 就能 Company Remote** → 否；`USER_FREE_TEXT` 仍 DENY。
-5. **Company LLM Explanation 是政务知识权威** → 否。
-6. **`TERMINAL_CANDIDATE` = confirmed business** → 否；F10 未做。
-
----
-
-## 13. 出问题时从哪里看
-
-### 用户回答没推进
-
-1. `interpretation.kind`
-2. `mapped_value`
-3. `confidence`
-4. `allowed_values` membership
-5. `mapping_validation.status`
-6. `validated_slot`
-7. `business_transition`
-
-### 「什么是 X？」却走 Mapper
-
-1. detector pattern
-2. extracted topic
-3. topic length
-4. `question_text` containment
-5. `interpretation.kind`
-
-### Explanation 没显示
-
-`ExplanationResult.status` → `failure.kind` → safety guard → `response_text`
-
-### F04 没被调用
-
-先看是否 `MappingValidationStatus.ACCEPTED`——不要先怀疑 Business Graph。
-
-### Data Policy 被拒
-
-`LlmAnswerMapper` + Company Provider → Policy DENY = **当前预期行为**，不是 Provider bug。
-
----
-
-## 14. 面试时如何介绍 F09
-
-### 30 秒
-
-> 我把大模型从业务决策层剥离出来。业务图谱负责确定当前缺哪个槽位；LLM 只做自然语言到受控槽位的映射并给 confidence；Controller 再做 allowed-values 和置信度校验，只有通过以后才交给确定性业务图继续推进。另外专门设计了解释旁路，避免用户问「什么是社保转移」时被误判成选择转移。
-
-### 60–90 秒
-
-> 系统里有两张图：LangGraph 做 Agent 能力编排，Business Decision Graph（F04）做业务推进。F09 在 F04 返回 `NEED_SLOT`/`INVALID_SLOT` 之后介入。本地 detector 先识别解释意图，避免把 raw `USER_FREE_TEXT` 发给公司模型去问“这是不是解释”。真正槽位回答走 AnswerMapper，但因为声明了 `USER_FREE_TEXT`，当前 Company Remote 仍 DENY——这是 F07 策略。解释旁路则把本地抽出的受控 topic 做成没有原话字段的 `ExplanationRequest`，用 ALLOW 分类走 Demo Company LLM，再经本地 safety guard fail-closed。未来政务百科只需实现 `ExplanationService` Protocol 替换 `LlmExplanationService`，F09 workflow 不用推倒。候选事项到 `TERMINAL_CANDIDATE` 后，用户确认留给 F10。
-
-### 追问速答
-
-| 追问 | 要点 |
+| 项目 | 内容 |
 |------|------|
-| 为何不用 LLM 决定 `next_node` | 政务要可控、可审计、可复现；边在 Business Graph |
-| confidence 有何用 | 第二道 gate，不能代替 membership |
-| 为何 detector 用 regex | Demo 要 local-first 高精度、不发 raw USER_FREE_TEXT；未来可换本地模型 |
-| 为何 Explanation 可远程 | Remote 不收原句，只收本地受控 concept |
-| 未来怎么接百科 | 实现 `ExplanationService`；换后端即可 |
-| 为何不每轮 RAG | F06 管初始方向；槽位导航由确定性 Graph 主导 |
-| F09 vs F10 | F09 理解当前回答；F10 确认最终候选事项 |
+| 输入 | 已注入的 `repository`；`slot_name`；`allowed_values`；`source_condition_refs` |
+| 输出 | `SemanticProjectionResult`：`coverage`、`semantics`、`reason_code` |
+| 下一步 | `FULL` / `NONE` 去 Mapper；`PARTIAL` / `INVALID` fail closed |
+
+`ControlledAllowedValueSemantic` 只有 `value` 和 `meaning`。`value` 是机器契约。`meaning` 是受控描述，不能决定边、规则、事项或确认结果。模型 `frozen=True`、`extra="forbid"`，空白 `value` 或 `meaning` 会被拒绝。
+
+`SemanticProjectionResult` 同样冻结且禁止额外字段。只有 `FULL` 可以携带非空 `semantics`。其余覆盖状态必须是空 tuple。
+
+当前 Demo 的真实链是：
+
+```text
+Decision Graph node employment_type
+        ↓
+source_condition_refs
+        ↓
+DEMO_SS_001
+cond-applicant-01 / 02 / 03
+        ↓
+JsonBusinessRepository.get_conditions(..., PUBLIC)
+        ↓
+field = employment_type
+normalized_values 恰好一个 machine value
+source_text = 对应中文 wording
+        ↓
+ControlledAllowedValueSemantic
+```
+
+F09 不打开 `data/demo/demo_ss_001.json`。snapshot 由上层装载进 Repository。节点只读 `deps.business_repository`。
+
+公开资格不在 `semantics.py` 里重写。`get_conditions` 在 `ConsumptionMode.PUBLIC` 时调用已有的 `is_public_condition`。某条 condition 在 `INTERNAL` 里存在、公开过滤后看不到，投影得到 `invalid_unapproved_ref`，不会改去读内部数据。
+
+顺序也不跟 Repository 返回顺序走。`FULL` 时按 `allowed_values` 重建 tuple：
+
+```python
+ordered = tuple(
+    ControlledAllowedValueSemantic(value=value, meaning=found[value])
+    for value in allowed
+)
+```
 
 ---
 
-## 15. Review INFO / Evidence
+## 8. FULL / NONE / PARTIAL / INVALID
 
-| ID | 说明 |
+| 状态 | 数据情况 | 调用 LLM | legacy | 进入 F04 |
+|------|----------|----------|--------|----------|
+| `FULL` | 每个 allowed value 恰好一条合法、公开、非空、字段对齐的 meaning | 是，enriched | 否 | 只有随后 `ACCEPTED` 才进入 |
+| `NONE` | `source_condition_refs` 为 `None` 或空 | 是，legacy | 是 | 只有随后 `ACCEPTED` 才进入 |
+| `PARTIAL` | 引用已接入，已读数据合法，但没盖住全部 allowed values | 否 | 否 | 否 |
+| `INVALID` | 引用、字段、取值或 wording 违反契约 | 否 | 否 | 否 |
+
+### FULL
+
+refs 存在。每条 ref 都能在 PUBLIC conditions 里找到。`field` 等于当前 `slot_name`。`normalized_values` 恰好是一个非空字符串，并且属于 `allowed_values`。`source_text` 去掉空白后非空。没有重复值，没有图里不存在的值，而且每个 allowed value 都被覆盖。然后按图的 `allowed_values` 生成有序 semantics，`reason_code` 为 `full`。
+
+`employment_type` 三条 applicant condition 都满足这些条件，所以是 `FULL`。
+
+### NONE
+
+```python
+if not source_condition_refs:
+    return SemanticProjectionResult(
+        coverage=SemanticCoverage.NONE,
+        semantics=(),
+        reason_code=REASON_NONE,
+    )
+```
+
+这里直接返回，不调用 `get_conditions`。这表示旧槽位还没接入语义增强，不是 Business Data 坏了。例如 `source_condition_refs` 为 `null` 的系统节点走这条路。节点随后把 `allowed_value_semantics=None` 交给 Mapper。
+
+### PARTIAL
+
+引用已经接上，读到的每条数据本身都合法，但合法 meaning 只覆盖一部分 allowed values。允许 A、B、C，只有 A、B，就是 `PARTIAL`，`reason_code` 为 `partial_missing_values`，`semantics` 为空。
+
+它不能退回 legacy。否则有的选项带着 wording，有的选项仍是裸枚举，模型上下文不对称。节点在 Mapper 之前返回 `semantic_projection_partial`。
+
+### INVALID
+
+按 ref 扫描，第一个缺陷立即返回，`semantics` 为空：
+
+| 情况 | `reason_code` |
+|------|----------------|
+| ref 找不到，或 business 不存在，或 PUBLIC 过滤后没有 | `invalid_unapproved_ref` |
+| `field` 不是当前 slot | `invalid_field_mismatch` |
+| `normalized_values` 不是恰好一个非空字符串 | `invalid_normalized_value` |
+| `source_text` 空白 | `invalid_blank_meaning` |
+| machine value 不在 `allowed_values` | `invalid_extra_value` |
+| 同一个 machine value 出现两次 | `invalid_duplicate_value` |
+
+当前节点在图里找不到时，节点自己也记 `invalid_unapproved_ref`，不会把它当成 `NONE`。
+
+这些是系统数据契约错误，不是用户没说清楚。所以不会变成 `UNCERTAIN`、`LOW_CONFIDENCE` 或 `OTHER`。
+
+`PARTIAL` 和 `INVALID` 的模型调用次数是 0，F04 调用次数是 0，slot 写入次数是 0。
+
+---
+
+## 9. FULL 与 NONE 的 Mapper 差异
+
+请求类型在 `agent/interaction.py` 的 `AnswerMappingRequest`。
+
+改造前只有 `required_slot`、`allowed_values`、`user_text`。现在多了 `allowed_value_semantics`：
+
+| 值 | 含义 |
 |----|------|
-| RF-F09-001 | `OI-F09-DP-001` OPEN / NON-BLOCKING——**不是 defect** |
-| RF-F09-002 | Stage drift——已在 Explanation 文档更新 **RESOLVED** |
-| RF-F09-003 | unused `interpretation_from_mapper_safe`——**DEFERRED**，不影响主链 |
-| RF-F09-004 | Demo substring safety guard——accepted Demo boundary；正式权威归未来 Encyclopedia |
+| `None` | legacy raw-enum mapping |
+| 与 `allowed_values` 等长、同序的 tuple | semantic-enriched mapping |
+| 空 tuple | 非法。长度对不上非空的 `allowed_values` |
 
-| Gate | Result |
-|------|--------|
-| Review | **PASS** |
-| BLOCKING / MAJOR / MINOR | **0 / 0 / 0** |
-| INFO | **4** |
-| Review Fix | **NOT REQUIRED** |
-| Interaction / Workflow / Combined | **63 / 24 / 87 PASS** |
-| Full | **469 passed / 13 skipped / 0 failed / 0 warnings** |
+请求层只检查数量和 `value` 顺序。它不再检查公开资格、核验状态或来源。那些已经由 semantic projection 负责。这是职责分离。
+
+`NONE` 的 user message 仍是三行，不出现 `allowed_value_meanings=[]`：
+
+```text
+required_slot=...
+allowed_values=[...]
+user_text=...
+```
+
+这样尚未接入的旧槽位保持原来的 Prompt。
+
+`FULL` 仍保留 raw `allowed_values`，只在它和 `user_text` 之间插入一行紧凑 JSON：
+
+```text
+required_slot=...
+allowed_values=[...]
+allowed_value_meanings=[{"value":"...","meaning":"..."}]
+user_text=...
+```
+
+JSON 使用 `ensure_ascii=False` 和 `separators=(",", ":")`，每项只有 `value` 和 `meaning`。不发送 `source_ref`、核验状态、门槛或 Golden。meaning 不能代替 machine value。模型仍必须返回 `allowed_values` 里的那个枚举。
+
+两条路径的 system prompt 是同一段字符串。它要求只返回 `kind`、`mapped_value`、`confidence`，并禁止 `next_node`、`business_id`、`rule_result` 以及材料、地点、渠道、法律依据。
 
 ---
 
-## 16. 阅读完成后你应该能回答
+## 10. LLMRequest 与 DataClassification
 
-1. 为什么「什么是社保转移？」不会进入 transfer
-2. 为什么 Mapper 不能输出 `EXPLANATION_REQUEST`
-3. 为什么 confidence=1.0 也可能 reject
-4. 为什么 `ExplanationRequest` 没有 `input_text`
-5. 为什么 `AnswerMapper` 当前不能直接 Company Remote
-6. F09 唯一 F04 调用点在哪（`_make_advance_business_graph_node` → `advance_until_blocked`）
-7. LangGraph 与 Business Graph 区别是什么
-8. `candidate_business_id` 从哪里来
-9. 为什么没有 `confirmed_business_id`
-10. 未来政务百科替换哪个接口（`ExplanationService`）
+`LlmAnswerMapper.map_answer` 组装 `LlmRequest`，`operation` 为 `f09_slot_answer_mapping`。真正能否远程发送，仍由现有 Provider 上的 F07 policy 决定。本次没有修改 F07。
+
+| 消息 | `NONE` | `FULL` |
+|------|--------|--------|
+| system | `SYSTEM_CONTROL_DATA` | `SYSTEM_CONTROL_DATA` |
+| user | `USER_FREE_TEXT` + `SYSTEM_CONTROL_DATA` | 再加 `PUBLIC_BUSINESS_METADATA` |
+
+`FULL` 多出的分类是因为 controlled meanings 是公开业务元数据。`USER_FREE_TEXT` 没有被拿掉，所以 `DEFAULT` 仍然拒绝把真实用户输入发到远程模型。当前 Demo 远程调用仍依赖既有的 `DEMO_APPROVED`。
 
 ---
 
-## 17. Code-Reading Stage Status
+## 11. LLM 输出以后谁做最终校验
 
-| 项 | 结论 |
-|----|------|
-| Code-Reading | **COMPLETE** |
-| Commit / Push | **NOT STARTED** |
-| Next | Owner 授权后 **F09 Commit** |
-| Production / Tests modified in this stage | **0 / 0** |
+`AnswerMapperOutput` 仍只有 `kind`、`mapped_value`、`confidence`，并且 `extra="forbid"`。`next_node`、`business_id`、`candidate_business_id`、`confirmed_business_id`、`rule_result` 不能出现。这是 LLM 的权限上限。Provider 用 `parse_structured_output` 解析；解析失败走原来的 `MAPPER_PARSE_ERROR`，不是语义契约失败。
 
-**STOP — Do not enter Commit / Push without Owner authorization.**
+`mapper_output_to_interpretation` 只做类型转换：`slot_answer` 变成带值和 confidence 的 `UtteranceInterpretation`，`uncertain` / `other` 变成对应 kind。这里不是业务决策。
+
+本地决定在 `validate_slot_mapping`，由节点 `_validate_slot_answer` 调用。顺序固定：
+
+```text
+kind 是不是 slot_answer
+        ↓
+mapped_value 是否属于 context.allowed_values
+        ↓
+不属于 → INVALID_VALUE
+属于
+        ↓
+confidence 是否 >= policy.min_confidence
+        ↓
+低于门槛 → LOW_CONFIDENCE
+达到门槛 → ACCEPTED，并写出 ValidatedSlot
+```
+
+非法 value 即使 confidence 是 `1.0`，仍然是 `INVALID_VALUE`。membership 的权威是 `allowed_values`，不是 confidence，也不是 meaning。
+
+`MappingPolicy.min_confidence` 默认仍是 `_DEFAULT_MIN_CONFIDENCE = 0.80`。enriched mapping 没有加分、没有归一化、没有地板值。因此 `0.80` 是 `ACCEPTED`，`0.79` 是 `LOW_CONFIDENCE`。
+
+---
+
+## 12. 为什么只有 ACCEPTED 才进入 F04
+
+`_route_by_validation` 只有 `accepted` 才去 `advance_business_graph`。该节点再次确认状态是 `ACCEPTED`，把 `validated_slot` 放进槽位字典，然后调用 `advance_until_blocked(deps.decision_graph, current_node_id, new_slots)`。
+
+F04 根据当前图和已接受的 machine value 做确定性转移。meaning 不参与选边。LLM 没有 `next_node` 权限。`LOW_CONFIDENCE` 和 `INVALID_VALUE` 回到 `resume_current_slot`，槽位保持未接受。
+
+---
+
+## 13. 为什么 F09 不能替代 F10
+
+F09 结束时，最多是当前槽位上有一个受控值，图可能继续走。即使以后走到 `TERMINAL_CANDIDATE`，`candidate_business_id` 仍只是候选。
+
+`confirmed_business_id` 的写入点在 F10：`assign_confirmed_business_id`。它要求终点校验为 `READY_FOR_CONFIRMATION`，并且 `interpret_confirmation` 得到 `CONFIRMED`。controlled semantics 不参与这个判断，也不能跳过它。
+
+---
+
+## 14. PARTIAL / INVALID 如何 fail closed
+
+```text
+PARTIAL / INVALID
+        ↓
+_semantic_contract_failure
+        ↓
+InteractionFailure
+        ↓
+artifacts["f09"].failure
+        ↓
+_route_by_interpretation
+        ↓
+semantic_contract_failure
+        ↓
+_complete_node
+        ↓
+phase = COMPLETED
+status = WorkflowStatus.COMPLETED
+```
+
+这条边在 `build_slot_interaction_workflow` 里直接连到 `complete`。它不经过 `resume_current_slot`，因为那条路会把失败说成用户没说清楚。
+
+失败对象只有两个字段：
+
+| 字段 | 内容 |
+|------|------|
+| `kind` | `semantic_projection_partial` 或 `semantic_projection_invalid` |
+| `safe_message` | 低基数 `reason_code` |
+
+不保存用户原话、完整 meaning、Prompt 或模型原文。用户看到的固定句子是“当前办理选项的说明不完整，暂时无法继续确认这个选项。”`interpretation` 保持为空，没有 `validated_slot`。
+
+---
+
+## 15. COMPLETED 为什么不是业务成功
+
+`_complete_node` 只把阶段改成 `COMPLETED`，状态改成 `WorkflowStatus.COMPLETED`，`error` 置空，并记下 trace `complete`。
+
+`WorkflowStatus.COMPLETED` 表示这一轮 LangGraph 执行结束。它不是政务事项办理成功，也不是事项已经确认。语义契约失败的测试确认：没有 `confirmed_business_id`，没有 terminal candidate，没有已接受的 slot。`SessionTurnSuccess` 本身也没有 `confirmed_business_id` 字段。
+
+---
+
+## 16. Repository DI / AgentState / Redis 边界
+
+`SlotInteractionDependencies` 是冻结 dataclass。`business_repository: JsonBusinessRepository` 由调用方传入，放在带默认值的 `mapping_policy` 之前。节点只使用 `deps.business_repository`。它不 `new JsonBusinessRepository`，不 `load_snapshot`，也不打开 JSON。这样 Repository 的生命周期留在上层，测试可以传入同一个内存实例并数 `get_conditions` 次数。
+
+semantic projection 只存在于这一次 `AnswerMappingRequest`。它不写入 `AgentState`。会话里继续保存的是图位置、已接受槽位和既有控制信息。因此 Redis checkpoint 不需要新 schema。也没有 PostgreSQL migration、新 cache 或新依赖。
+
+日志在 `_log_semantic_projection`。调试投影时看这四项：`semantic_coverage`、`semantic_count`、`mapper_mode`、`reason_code`。`mapper_mode` 为 `ENRICHED`、`LEGACY` 或 `FAIL_CLOSED`。不要为了调试去打印 `user_text`、完整 Prompt、meaning 全文或 API key。
+
+同一 `business_id` 的多条 ref 会各自调用一次内存 `get_conditions`。当前 Demo 规模不需要为此加 cache。生产代码里没有第二处自己构造 `SlotInteractionDependencies`，必填的 Repository 没有遗漏的生产构造点。这两条是 Review NOTE，不是待修缺陷。
+
+---
+
+## 17. 改造前后对比
+
+| 项目 | 改造前 | 改造后 | 保持不变 |
+|------|--------|--------|----------|
+| Mapper 上下文 | 只有 raw machine value | raw machine value，`FULL` 时再加 controlled meanings | machine value 仍是返回契约 |
+| Prompt | 三行 | `NONE` 仍是三行；`FULL` 多一行 JSON | system prompt 不变 |
+| DataClassification | user：`USER_FREE_TEXT` + `SYSTEM_CONTROL_DATA` | `FULL` 的 user 再加 `PUBLIC_BUSINESS_METADATA` | `USER_FREE_TEXT` 仍在 |
+| Business Data | F09 不读 | 通过已注入 Repository 的 PUBLIC conditions | 不直接打开 snapshot 文件 |
+| threshold | `0.80` | `0.80` | 无加分、无地板 |
+| membership | 本地对照 `allowed_values` | 同左 | confidence 不能绕过 |
+| F04 | 仅 `ACCEPTED` 后确定性转移 | 同左 | LLM 无 `next_node` |
+| F10 | 明确确认后才有 `confirmed_business_id` | 同左 | semantics 不能跳过 |
+| F07 | 远程发送前必须评估 | 同左 | `DEFAULT` 仍拒绝用户原文 |
+
+---
+
+## 18. 文件职责图
+
+业务流程到这里已经完整。下面只说明这次 Reopen 碰过的四个文件。
+
+| 文件 | 为什么改 | 主要 symbol | 输入 | 输出 | 它不负责 |
+|------|----------|-------------|------|------|----------|
+| `business_data/semantics.py` | 把图上的合法值和公开 wording 对齐 | `project_allowed_value_semantics` | slot、allowed values、refs、Repository | `SemanticProjectionResult` | 不调用 LLM，不推进图，不打开 snapshot 文件 |
+| `agent/interaction.py` | 让请求能携带 semantics，并保持本地校验 | `AnswerMappingRequest`、`LlmAnswerMapper`、`validate_slot_mapping` | 投影结果或 `None`，以及用户文本 | Prompt、分类、`ACCEPTED` 或拒绝 | 不查公开资格，不决定下一节点 |
+| `agent/nodes.py` | 把解释、投影、映射、校验和失败编排起来 | `_interpret_slot_input`、`_semantic_contract_failure` | 状态、`deps` | `artifacts["f09"]` | 不自己创建 Repository |
+| `agent/workflow.py` | 注入 Repository，并让契约失败结束本轮 | `SlotInteractionDependencies`、条件边 `semantic_contract_failure` | 依赖与初始状态 | 编译后的 F09 图 | 不实现投影算法 |
+
+---
+
+## 19. Symbol 阅读地图
+
+推荐按这个顺序读代码。正文前面的业务链仍然是主线，这里只是第二次打开文件时的顺序。
+
+1. `nodes._interpret_slot_input`：整段 F09 编排。
+2. `project_allowed_value_semantics`：semantics 从哪里来。
+3. `ControlledAllowedValueSemantic`、`SemanticCoverage`、`SemanticProjectionResult`：数据契约。
+4. `AnswerMappingRequest`、`LlmAnswerMapper.map_answer`：Prompt 和分类。
+5. `mapper_output_to_interpretation`、`validate_slot_mapping`：本地权限。
+6. 回到 `nodes._route_by_validation` 和 `_advance_business_graph`：什么时候进入 F04。
+7. `workflow` 的 `semantic_contract_failure` 边和 `_complete_node`：fail closed 如何结束本轮。
+
+| Symbol | Module | Business Role | Input | Output | Who Calls It | Next Step |
+|--------|--------|---------------|-------|--------|--------------|-----------|
+| `_interpret_slot_input` | `agent/nodes.py` | 本轮槽位理解的编排 | 用户文本、slot context、deps | f09 artifact | F09 图 `interpret_slot_input` | 路由 |
+| `detect_explanation_request` | `agent/interaction.py` | 先把问含义从选择里分开 | user text、question text | 解释 interpretation 或 `None` | `_interpret_slot_input` | 命中则旁路，否则投影 |
+| `project_allowed_value_semantics` | `business_data/semantics.py` | 对齐合法值与公开 wording | Repository、slot、allowed values、refs | `SemanticProjectionResult` | `_interpret_slot_input` | FULL/NONE 去 Mapper，否则失败 |
+| `ControlledAllowedValueSemantic` | `business_data/semantics.py` | 一个 machine value 加一条 meaning | value、meaning | 冻结对象 | 投影与请求 | 只进入 Prompt |
+| `SemanticCoverage` | `business_data/semantics.py` | FULL/NONE/PARTIAL/INVALID | 投影结论 | 枚举 | 投影与节点 | 决定 Mapper 或 fail closed |
+| `SemanticProjectionResult` | `business_data/semantics.py` | 覆盖结果和原因码 | coverage、semantics、reason | 冻结结果 | 投影 | 节点消费 |
+| `AnswerMappingRequest` | `agent/interaction.py` | 一次映射请求 | slot、allowed values、用户文本、semantics 或 `None` | 校验后的请求 | 节点 | `map_answer` |
+| `LlmAnswerMapper.map_answer` | `agent/interaction.py` | 组装 Prompt 并调用 Provider | `AnswerMappingRequest` | `AnswerMapperOutput` | 节点 | 转 interpretation |
+| `AnswerMapperOutput` | `agent/interaction.py` | 模型输出上限 | kind、value、confidence | 冻结输出 | Provider 解析 | 本地转换 |
+| `mapper_output_to_interpretation` | `agent/interaction.py` | 把模型输出变成本地解释 | `AnswerMapperOutput` | `UtteranceInterpretation` | 节点 | `validate_slot_mapping` |
+| `validate_slot_mapping` | `agent/interaction.py` | membership 然后 confidence | interpretation、context、policy | `ACCEPTED` 或拒绝 | `_validate_slot_answer` | 只有接受才进 F04 |
+| `advance_until_blocked` | `business_graph/transition.py` | F04 确定性转移 | 图、当前节点、已接受槽位 | `TransitionResult` | `_advance_business_graph` | 下一图状态 |
+| `_complete_node` | `agent/nodes.py` | 结束这一轮编排 | 当前状态 | `COMPLETED` | `complete` 节点 | API 返回 |
+| `SlotInteractionDependencies` | `agent/workflow.py` | 外部注入 Mapper、图和 Repository | 构造参数 | 冻结依赖 | `run_slot_interaction_workflow` | 各节点只读 `deps` |
+
+---
+
+## 20. Debugging Guide
+
+日志优先看 `message=semantic_projection` 的四个字段。不要打印用户原文、完整 Prompt 或密钥。
+
+**Case A：值选对了，confidence 太低**
+
+看 `semantic_coverage` 是不是 `FULL`，`mapper_mode` 是不是 `ENRICHED`，request 里有没有三句 meaning，user 分类有没有 `PUBLIC_BUSINESS_METADATA`，以及 Provider 返回的 confidence。先确认语义有没有进请求。不要先把 `0.80` 改成 `0.70`。历史 Golden 的 `0.72` 属于改造前只有 raw enum 的路径。
+
+**Case B：直接 fail closed**
+
+看 `coverage` 和 `reason_code`。再核对 `source_condition_refs`、PUBLIC conditions、`field`、`normalized_values` 和 `source_text`。`PARTIAL` / `INVALID` 时期望 Mapper 次数为 0。
+
+**Case C：询问含义被当成选择**
+
+先看 `detect_explanation_request` 是否仍在投影之前，再看这句话是否属于现有确定性句式，以及 topic 是否出现在当前 `question_text`。“什么是……”和“什么叫……”都属于当前支持范围，不要再把“什么叫……”当成已知未支持句式。不匹配的问法会继续进入映射。含“叫”的普通陈述，例如“我叫张三”，不是解释请求。
+
+**Case D：非法 value 被接受**
+
+看 `validate_slot_mapping` 是否先做 `mapped_value not in context.allowed_values`。confidence 为 `1.0` 也不能通过这一步。
+
+**Case E：事项好像被提前确认**
+
+看是否只有 `ACCEPTED` 才调用 `advance_until_blocked`。再看 F10 的 `assign_confirmed_business_id`。F09 artifact 里出现受控槽位，不等于写入了 `confirmed_business_id`。
+
+---
+
+## 21. Golden Runtime Probe 阅读方法
+
+以后用真实 Company LLM 复验“平时接零活，没有固定单位”时，按这个顺序观察。本文件不记录这次复验已经通过。
+
+| 观察点 | 期望 |
+|--------|------|
+| pending slot | `employment_type` |
+| coverage | `FULL` |
+| semantic_count | `3` |
+| mapper_mode | `ENRICHED` |
+| user 分类 | `USER_FREE_TEXT`、`SYSTEM_CONTROL_DATA`、`PUBLIC_BUSINESS_METADATA` |
+| policy | `DEMO_APPROVED` 下允许这一组合 |
+| mapped_value | `other_flexible_employment` |
+| membership | PASS |
+| confidence | `>= 0.80` |
+| validation | `ACCEPTED` |
+
+不要把期望写成 confidence 必须等于 `0.80`。本地实现已经具备重新验证的条件，但新的 Production Golden probe 尚未执行。
+
+---
+
+## 22. 测试证据
+
+测试用来对照行为，不是逐个函数清单。
+
+| 文件 | 读它是为了看 |
+|------|----------------|
+| `tests/test_allowed_value_semantics.py` | projection：`FULL`、按 `allowed_values` 排序、`NONE` 不查库、`PARTIAL`、各类 `INVALID`、PUBLIC 过滤 |
+| `tests/test_agent_interaction.py` | legacy / enriched Prompt、分类、`None` 与空 tuple、`0.80` / `0.79`、非法 value |
+| `tests/test_agent_workflow.py` | 解释旁路、Repository 注入、`FULL` / `NONE` / `PARTIAL` / `INVALID`、F04 边界、`COMPLETED` 不等于确认 |
+
+语义增强闭环时的证据是 projection 21 passed、interaction 69 passed、workflow 37 passed，全量 653 passed、13 skipped、0 failed、0 errors。`F09-CR-MAJOR-01` 修复后的当前证据是 interaction 77 passed、workflow 38 passed、F09 三组 136 passed，全量 662 passed、13 skipped、0 failed、0 errors、0 warnings。13 个 skip 仍来自既有外部环境开关。
+
+---
+
+## 23. Review Notes
+
+Review 结论是 `PASS_WITH_NOTES`。下面两条不是待修 bug。
+
+NOTE-1：同一个 `business_id` 可能因多条 ref 重复调用内存中的 `get_conditions`。Demo 规模不需要 cache 或批量接口。
+
+NOTE-2：生产代码没有别的地方自己构造 `SlotInteractionDependencies`。`business_repository` 变为必填后，没有遗漏的生产构造点。
+
+---
+
+## 24. 当前状态与下一步
+
+本地状态：Code、Test、Explanation 已通过。F09 Review 为 `PASS_WITH_NOTES`。`F09-CR-MAJOR-01` 为 `RESOLVED`。F09 Re-Review 为 `PASS_WITH_NOTES`。Documentation Sync 已完成本阶段。代码侧没有剩余 blocker。Commit 尚未执行。
+
+全量测试：662 passed，13 skipped，0 failed，0 errors，0 warnings。
+
+RG-F12-006 仍然是 `FAILED / LOW_CONFIDENCE`。那次失败对应的是旧的 raw-enum Production 路径。新的 semantic path 还没有用真实 Company LLM 重新验证。662 个本地测试，以及 MAJOR-01 已解决，都不能把它改成 READY。代码、测试和审查已经具备重新做 Production Golden 验证的条件，但新的真实 probe 尚未执行。
+
+下一步是 Owner 审阅。只有 Owner 批准后才能 Commit。未获授权时不运行 RG-F12-006。

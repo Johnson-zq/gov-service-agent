@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import math
 import re
 from dataclasses import dataclass
@@ -18,6 +19,7 @@ from pydantic import (
     model_validator,
 )
 
+from gov_service_agent.business_data.semantics import ControlledAllowedValueSemantic
 from gov_service_agent.business_graph.transition import TransitionResult, TransitionStatus
 from gov_service_agent.llm.provider import LlmProvider
 from gov_service_agent.llm.structured import parse_structured_output
@@ -34,6 +36,7 @@ _DEFAULT_MIN_CONFIDENCE = 0.80
 
 _EXPLANATION_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"^\s*什么是\s*(.+?)\s*[?？!！。.\s]*$"),
+    re.compile(r"^\s*什么叫\s*(.+?)\s*[?？!！。.\s]*$"),
     re.compile(r"^\s*(.+?)\s*是什么意思\s*[?？!！。.\s]*$"),
     re.compile(r"^\s*(.+?)\s*是指什么\s*[?？!！。.\s]*$"),
     re.compile(r"^\s*请解释一下\s*(.+?)\s*[?？!！。.\s]*$"),
@@ -53,6 +56,7 @@ _FALLBACK_UNCERTAIN = "我还不能确定您的意思，请根据当前选项再
 _FALLBACK_OTHER = (
     "您刚才的内容没有直接回答当前办理选项，我们先继续确认当前事项。"
 )
+_FALLBACK_SEMANTIC_CONTRACT = "当前办理选项的说明不完整，暂时无法继续确认这个选项。"
 
 
 class UtteranceKind(StrEnum):
@@ -81,6 +85,8 @@ class InteractionFailureKind(StrEnum):
     EXPLANATION_PROVIDER_ERROR = "explanation_provider_error"
     EXPLANATION_PARSE_ERROR = "explanation_parse_error"
     EXPLANATION_UNSAFE_OUTPUT = "explanation_unsafe_output"
+    SEMANTIC_PROJECTION_PARTIAL = "semantic_projection_partial"
+    SEMANTIC_PROJECTION_INVALID = "semantic_projection_invalid"
 
 
 def _reject_non_finite_confidence(value: float) -> float:
@@ -333,6 +339,7 @@ class AnswerMappingRequest(BaseModel):
     required_slot: str
     allowed_values: tuple[str, ...]
     user_text: str
+    allowed_value_semantics: tuple[ControlledAllowedValueSemantic, ...] | None = None
 
     @field_validator("required_slot", "user_text")
     @classmethod
@@ -348,6 +355,22 @@ class AnswerMappingRequest(BaseModel):
             _require_nonblank(item, field_name="allowed_values item")
             for item in value
         )
+
+    @model_validator(mode="after")
+    def _semantics_align(self) -> AnswerMappingRequest:
+        semantics = self.allowed_value_semantics
+        if semantics is None:
+            return self
+        if len(semantics) != len(self.allowed_values):
+            raise ValueError(
+                "allowed_value_semantics must align with allowed_values"
+            )
+        for item, expected in zip(semantics, self.allowed_values, strict=True):
+            if item.value != expected:
+                raise ValueError(
+                    "allowed_value_semantics must align with allowed_values"
+                )
+        return self
 
 
 @runtime_checkable
@@ -374,11 +397,32 @@ class LlmAnswerMapper:
             "locations, channels, or legal_basis.\n"
             "Never classify explanation questions as slot_answer."
         )
-        user = (
-            f"required_slot={request.required_slot}\n"
-            f"allowed_values=[{allowed}]\n"
-            f"user_text={request.user_text}"
-        )
+        user_classes = {
+            DataClassification.USER_FREE_TEXT,
+            DataClassification.SYSTEM_CONTROL_DATA,
+        }
+        if request.allowed_value_semantics is None:
+            user = (
+                f"required_slot={request.required_slot}\n"
+                f"allowed_values=[{allowed}]\n"
+                f"user_text={request.user_text}"
+            )
+        else:
+            meanings = json.dumps(
+                [
+                    {"value": item.value, "meaning": item.meaning}
+                    for item in request.allowed_value_semantics
+                ],
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+            user = (
+                f"required_slot={request.required_slot}\n"
+                f"allowed_values=[{allowed}]\n"
+                f"allowed_value_meanings={meanings}\n"
+                f"user_text={request.user_text}"
+            )
+            user_classes.add(DataClassification.PUBLIC_BUSINESS_METADATA)
         llm_request = LlmRequest(
             messages=[
                 LlmMessage(
@@ -391,12 +435,7 @@ class LlmAnswerMapper:
                 LlmMessage(
                     role=LlmRole.USER,
                     content=user,
-                    classifications=frozenset(
-                        {
-                            DataClassification.USER_FREE_TEXT,
-                            DataClassification.SYSTEM_CONTROL_DATA,
-                        }
-                    ),
+                    classifications=frozenset(user_classes),
                 ),
             ],
             operation="f09_slot_answer_mapping",
@@ -490,6 +529,11 @@ def compose_uncertain_response(question_text: str) -> str:
 
 def compose_other_response(question_text: str) -> str:
     return f"{_FALLBACK_OTHER}\n\n{question_text}"
+
+
+def compose_semantic_contract_failure_response() -> str:
+    """Fixed safe reply for a semantic data-contract failure."""
+    return _FALLBACK_SEMANTIC_CONTRACT
 
 
 def serialize_slot_context(context: SlotInteractionContext) -> dict[str, Any]:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 from collections.abc import Callable
 from typing import Any
 
@@ -21,6 +22,7 @@ from gov_service_agent.agent.interaction import (
     compose_explanation_failure_response,
     compose_explanation_response,
     compose_other_response,
+    compose_semantic_contract_failure_response,
     compose_uncertain_response,
     deserialize_interpretation,
     deserialize_mapping_validation,
@@ -62,11 +64,19 @@ from gov_service_agent.agent.terminal import (
     serialize_terminal_validation,
     validate_terminal_candidate,
 )
+from gov_service_agent.business_data.semantics import (
+    REASON_INVALID_UNAPPROVED,
+    SemanticCoverage,
+    project_allowed_value_semantics,
+)
+from gov_service_agent.business_graph.models import DecisionGraph, DecisionNode
 from gov_service_agent.business_graph.transition import (
     TransitionStatus,
     advance_until_blocked,
 )
 from gov_service_agent.llm.types import LlmProviderError, StructuredParseError
+
+logger = logging.getLogger("gov_service_agent")
 
 
 def _prepare_node(state: AgentState) -> dict[str, Any]:
@@ -113,6 +123,54 @@ def _f10_partial(
     }
 
 
+def _find_decision_node(graph: DecisionGraph, node_id: str) -> DecisionNode | None:
+    for node in graph.nodes:
+        if node.node_id == node_id:
+            return node
+    return None
+
+
+def _log_semantic_projection(
+    *,
+    coverage: str,
+    semantic_count: int,
+    mapper_mode: str,
+    reason_code: str,
+) -> None:
+    logger.info(
+        "message=semantic_projection semantic_coverage=%s semantic_count=%s "
+        "mapper_mode=%s reason_code=%s",
+        coverage,
+        semantic_count,
+        mapper_mode,
+        reason_code,
+    )
+
+
+def _semantic_contract_failure(
+    state: AgentState,
+    *,
+    kind: InteractionFailureKind,
+    reason_code: str,
+    coverage: str,
+) -> dict[str, Any]:
+    _log_semantic_projection(
+        coverage=coverage,
+        semantic_count=0,
+        mapper_mode="FAIL_CLOSED",
+        reason_code=reason_code,
+    )
+    failure = InteractionFailure(kind=kind, safe_message=reason_code)
+    return _f09_partial(
+        state,
+        {
+            "failure": failure.model_dump(mode="json"),
+            "response_text": compose_semantic_contract_failure_response(),
+        },
+        trace="interpret_slot_input",
+    )
+
+
 def _make_interpret_slot_input_node(
     deps: Any,
 ) -> Callable[[AgentState], dict[str, Any]]:
@@ -133,9 +191,57 @@ def _make_interpret_slot_input_node(
                 trace="interpret_slot_input",
             )
 
+        graph = deps.decision_graph
+        node = (
+            _find_decision_node(graph, context.current_node_id)
+            if isinstance(graph, DecisionGraph)
+            else None
+        )
+        if node is None:
+            return _semantic_contract_failure(
+                state,
+                kind=InteractionFailureKind.SEMANTIC_PROJECTION_INVALID,
+                reason_code=REASON_INVALID_UNAPPROVED,
+                coverage=SemanticCoverage.INVALID.value,
+            )
+
+        projected = project_allowed_value_semantics(
+            deps.business_repository,
+            slot_name=context.required_slot,
+            allowed_values=context.allowed_values,
+            source_condition_refs=node.source_condition_refs,
+        )
+        if projected.coverage is SemanticCoverage.PARTIAL:
+            return _semantic_contract_failure(
+                state,
+                kind=InteractionFailureKind.SEMANTIC_PROJECTION_PARTIAL,
+                reason_code=projected.reason_code,
+                coverage=projected.coverage.value,
+            )
+        if projected.coverage is SemanticCoverage.INVALID:
+            return _semantic_contract_failure(
+                state,
+                kind=InteractionFailureKind.SEMANTIC_PROJECTION_INVALID,
+                reason_code=projected.reason_code,
+                coverage=projected.coverage.value,
+            )
+
+        if projected.coverage is SemanticCoverage.FULL:
+            semantics = projected.semantics
+            mapper_mode = "ENRICHED"
+        else:
+            semantics = None
+            mapper_mode = "LEGACY"
+        _log_semantic_projection(
+            coverage=projected.coverage.value,
+            semantic_count=len(projected.semantics),
+            mapper_mode=mapper_mode,
+            reason_code=projected.reason_code,
+        )
         request = AnswerMappingRequest(
             required_slot=context.required_slot,
             allowed_values=context.allowed_values,
+            allowed_value_semantics=semantics,
             user_text=user_text,
         )
         try:
@@ -193,6 +299,14 @@ def _make_interpret_slot_input_node(
 
 def _route_by_interpretation(state: AgentState) -> str:
     f09 = read_f09(state["artifacts"])
+    failure = f09.get("failure")
+    if isinstance(failure, dict):
+        kind = failure.get("kind")
+        if kind in (
+            InteractionFailureKind.SEMANTIC_PROJECTION_PARTIAL.value,
+            InteractionFailureKind.SEMANTIC_PROJECTION_INVALID.value,
+        ):
+            return "semantic_contract_failure"
     interpretation = f09.get("interpretation")
     if not isinstance(interpretation, dict):
         raise AgentStateValidationError("f09.interpretation is required")

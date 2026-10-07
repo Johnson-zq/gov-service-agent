@@ -39,17 +39,43 @@ from gov_service_agent.agent.interaction import (
     serialize_transition_result,
     validate_slot_mapping,
 )
+from gov_service_agent.business_data.semantics import ControlledAllowedValueSemantic
 from gov_service_agent.business_graph.transition import (
     TransitionResult,
     TransitionStatus,
 )
+from gov_service_agent.llm.policy import evaluate_request_remote_policy
 from gov_service_agent.llm.types import (
     DataClassification,
     LlmErrorCode,
     LlmProviderError,
     LlmRequest,
     LlmResponse,
+    LlmRole,
+    RemoteDataPolicyProfile,
     StructuredParseError,
+)
+
+_MAPPER_SYSTEM_PROMPT = (
+    "You map a user utterance to one controlled slot value.\n"
+    "Return STRICT JSON only with fields: kind, mapped_value, confidence.\n"
+    "kind must be one of: slot_answer, uncertain, other.\n"
+    "For slot_answer: mapped_value must be exactly one allowed value; "
+    "confidence must be a finite float in [0,1].\n"
+    "For uncertain/other: mapped_value and confidence must be null.\n"
+    "Never output next_node, business_id, rule_result, materials, "
+    "locations, channels, or legal_basis.\n"
+    "Never classify explanation questions as slot_answer."
+)
+_EMPLOYMENT_VALUES = (
+    "self_employed_without_employees",
+    "part_time_without_employer_insurance",
+    "other_flexible_employment",
+)
+_EMPLOYMENT_MEANINGS = (
+    "无雇工的个体工商户",
+    "未在用人单位参加社会保险的非全日制从业人员",
+    "其他灵活就业人员",
 )
 
 
@@ -135,6 +161,8 @@ def test_interaction_failure_kinds() -> None:
         "explanation_provider_error",
         "explanation_parse_error",
         "explanation_unsafe_output",
+        "semantic_projection_partial",
+        "semantic_projection_invalid",
     }
 
 
@@ -246,15 +274,21 @@ def test_mapper_output_extra_business_fields_rejected() -> None:
                 "next_node": "bad",
             }
         )
-    with pytest.raises(ValidationError):
-        AnswerMapperOutput.model_validate(
-            {
-                "kind": "slot_answer",
-                "mapped_value": "transfer",
-                "confidence": 1.0,
-                "business_id": "X",
-            }
-        )
+    for extra_field in (
+        "business_id",
+        "candidate_business_id",
+        "confirmed_business_id",
+        "rule_result",
+    ):
+        with pytest.raises(ValidationError):
+            AnswerMapperOutput.model_validate(
+                {
+                    "kind": "slot_answer",
+                    "mapped_value": "transfer",
+                    "confidence": 1.0,
+                    extra_field: "X",
+                }
+            )
 
 
 def test_mapper_output_to_interpretation_never_explanation() -> None:
@@ -366,6 +400,15 @@ def test_validate_membership_first_and_threshold() -> None:
     )
     assert (
         validate_slot_mapping(low, ctx, policy).status
+        is MappingValidationStatus.LOW_CONFIDENCE
+    )
+    below = UtteranceInterpretation(
+        kind=UtteranceKind.SLOT_ANSWER,
+        mapped_value="transfer",
+        confidence=0.79,
+    )
+    assert (
+        validate_slot_mapping(below, ctx, policy).status
         is MappingValidationStatus.LOW_CONFIDENCE
     )
     edge = UtteranceInterpretation(
@@ -511,6 +554,52 @@ def test_generic_explanation_forms(utterance: str) -> None:
     hit = detect_explanation_request(utterance, question)
     assert hit is not None
     assert hit.explanation_topic == "事项A"
+
+
+_FLEXIBLE_EMPLOYMENT_QUESTION = "您属于哪种灵活就业情况？"
+
+
+@pytest.mark.parametrize(
+    "utterance",
+    [
+        "什么叫灵活就业",
+        "什么叫灵活就业？",
+        "什么叫灵活就业?",
+    ],
+)
+def test_shenme_jiao_flexible_employment_is_explanation(utterance: str) -> None:
+    hit = detect_explanation_request(utterance, _FLEXIBLE_EMPLOYMENT_QUESTION)
+    assert hit is not None
+    assert hit.kind is UtteranceKind.EXPLANATION_REQUEST
+    assert hit.explanation_topic == "灵活就业"
+    assert hit.mapped_value is None
+    assert hit.confidence is None
+
+
+def test_shenme_shi_flexible_employment_still_explanation() -> None:
+    hit = detect_explanation_request(
+        "什么是灵活就业？",
+        _FLEXIBLE_EMPLOYMENT_QUESTION,
+    )
+    assert hit is not None
+    assert hit.kind is UtteranceKind.EXPLANATION_REQUEST
+    assert hit.explanation_topic == "灵活就业"
+
+
+@pytest.mark.parametrize(
+    ("utterance", "question"),
+    [
+        ("平时接零活，没有固定单位", _FLEXIBLE_EMPLOYMENT_QUESTION),
+        ("我叫张三", "当前备注可能出现我叫张三，请确认灵活就业。"),
+        ("这个项目叫自由职业", "这个项目叫自由职业，请选择灵活就业类型。"),
+        ("他们叫我去窗口办理", "他们叫我去窗口办理，请先确认灵活就业。"),
+    ],
+)
+def test_non_explanation_utterances_stay_unmatched(
+    utterance: str,
+    question: str,
+) -> None:
+    assert detect_explanation_request(utterance, question) is None
 
 
 def test_unknown_topic_no_explanation() -> None:
@@ -671,3 +760,160 @@ def test_artifact_serialization_allow_nan_false() -> None:
     json.dumps(serialize_transition_result(result), allow_nan=False)
     json.dumps(serialize_slot_context(ctx), allow_nan=False)
     assert not math.isnan(0.8)
+
+
+def _employment_semantics() -> tuple[ControlledAllowedValueSemantic, ...]:
+    return tuple(
+        ControlledAllowedValueSemantic(value=value, meaning=meaning)
+        for value, meaning in zip(
+            _EMPLOYMENT_VALUES,
+            _EMPLOYMENT_MEANINGS,
+            strict=True,
+        )
+    )
+
+
+def _map_and_capture(
+    *,
+    semantics: tuple[ControlledAllowedValueSemantic, ...] | None,
+) -> LlmRequest:
+    provider = CapturingLlmProvider(
+        content='{"kind":"uncertain","mapped_value":null,"confidence":null}'
+    )
+    LlmAnswerMapper(provider).map_answer(
+        AnswerMappingRequest(
+            required_slot="employment_type",
+            allowed_values=_EMPLOYMENT_VALUES,
+            allowed_value_semantics=semantics,
+            user_text="平时接零活，没有固定单位",
+        )
+    )
+    assert len(provider.requests) == 1
+    return provider.requests[0]
+
+
+def _message(request: LlmRequest, role: LlmRole):
+    return next(item for item in request.messages if item.role is role)
+
+
+def test_legacy_none_prompt_has_no_meanings() -> None:
+    request = _map_and_capture(semantics=None)
+    user = _message(request, LlmRole.USER).content
+    assert user == (
+        "required_slot=employment_type\n"
+        "allowed_values=["
+        "self_employed_without_employees, "
+        "part_time_without_employer_insurance, "
+        "other_flexible_employment]\n"
+        "user_text=平时接零活，没有固定单位"
+    )
+    assert "allowed_value_meanings" not in user
+
+
+def test_full_prompt_keeps_values_and_adds_meanings() -> None:
+    request = _map_and_capture(semantics=_employment_semantics())
+    user = _message(request, LlmRole.USER).content
+    lines = user.splitlines()
+    assert lines[0] == "required_slot=employment_type"
+    assert lines[1] == (
+        "allowed_values=["
+        "self_employed_without_employees, "
+        "part_time_without_employer_insurance, "
+        "other_flexible_employment]"
+    )
+    assert lines[2].startswith("allowed_value_meanings=")
+    payload = json.loads(lines[2].split("=", 1)[1])
+    assert payload == [
+        {"value": value, "meaning": meaning}
+        for value, meaning in zip(
+            _EMPLOYMENT_VALUES,
+            _EMPLOYMENT_MEANINGS,
+            strict=True,
+        )
+    ]
+    assert lines[3] == "user_text=平时接零活，没有固定单位"
+
+
+def test_system_prompt_unchanged_for_none_and_full() -> None:
+    forbidden = ("0.80", "threshold", "few-shot", "Golden", "置信度")
+    for semantics in (None, _employment_semantics()):
+        request = _map_and_capture(semantics=semantics)
+        system = _message(request, LlmRole.SYSTEM).content
+        assert system == _MAPPER_SYSTEM_PROMPT
+        for token in forbidden:
+            assert token not in system
+
+
+def test_full_and_none_classifications_are_exact() -> None:
+    none_request = _map_and_capture(semantics=None)
+    assert _message(none_request, LlmRole.SYSTEM).classifications == frozenset(
+        {DataClassification.SYSTEM_CONTROL_DATA}
+    )
+    assert _message(none_request, LlmRole.USER).classifications == frozenset(
+        {
+            DataClassification.USER_FREE_TEXT,
+            DataClassification.SYSTEM_CONTROL_DATA,
+        }
+    )
+    full_request = _map_and_capture(semantics=_employment_semantics())
+    assert _message(full_request, LlmRole.SYSTEM).classifications == frozenset(
+        {DataClassification.SYSTEM_CONTROL_DATA}
+    )
+    full_user = frozenset(
+        {
+            DataClassification.USER_FREE_TEXT,
+            DataClassification.SYSTEM_CONTROL_DATA,
+            DataClassification.PUBLIC_BUSINESS_METADATA,
+        }
+    )
+    assert _message(full_request, LlmRole.USER).classifications == full_user
+    demo = evaluate_request_remote_policy(
+        full_request,
+        profile=RemoteDataPolicyProfile.DEMO_APPROVED,
+    )
+    assert demo.allowed is True
+    default = evaluate_request_remote_policy(
+        full_request,
+        profile=RemoteDataPolicyProfile.DEFAULT,
+    )
+    assert default.allowed is False
+    assert DataClassification.USER_FREE_TEXT in default.denied_categories
+
+
+def test_none_semantics_is_legacy_empty_tuple_is_not() -> None:
+    AnswerMappingRequest(
+        required_slot="employment_type",
+        allowed_values=_EMPLOYMENT_VALUES,
+        allowed_value_semantics=None,
+        user_text="平时接零活",
+    )
+    with pytest.raises(ValidationError):
+        AnswerMappingRequest(
+            required_slot="employment_type",
+            allowed_values=_EMPLOYMENT_VALUES,
+            allowed_value_semantics=(),
+            user_text="平时接零活",
+        )
+
+
+def test_semantics_alignment_rejects_count_and_order() -> None:
+    one = (ControlledAllowedValueSemantic(value=_EMPLOYMENT_VALUES[0], meaning="甲"),)
+    with pytest.raises(ValidationError):
+        AnswerMappingRequest(
+            required_slot="employment_type",
+            allowed_values=_EMPLOYMENT_VALUES,
+            allowed_value_semantics=one,
+            user_text="平时接零活",
+        )
+    swapped = (
+        ControlledAllowedValueSemantic(value=_EMPLOYMENT_VALUES[1], meaning="乙"),
+        ControlledAllowedValueSemantic(value=_EMPLOYMENT_VALUES[0], meaning="甲"),
+        ControlledAllowedValueSemantic(value=_EMPLOYMENT_VALUES[2], meaning="丙"),
+    )
+    with pytest.raises(ValidationError):
+        AnswerMappingRequest(
+            required_slot="employment_type",
+            allowed_values=_EMPLOYMENT_VALUES,
+            allowed_value_semantics=swapped,
+            user_text="平时接零活",
+        )
