@@ -3180,3 +3180,237 @@ Commit 之前要单独做 Documentation Sync。本轮不修改 Code-Reading，�
 当前行为：`detect_explanation_request` 把“什么叫灵活就业？”识别为 `EXPLANATION_REQUEST`。命中后不做 semantic projection，不调用 Answer Mapper，不进入 F04，不写 slot，也不写入 `candidate_business_id` 或 `confirmed_business_id`。解释结束后 `resume_current_slot`，继续等待原来的 `employment_type`。普通含“叫”的陈述不会因此被匹配。
 
 没有修改 Production 或测试。没有运行 RG-F12-006。它仍是 `FAILED / LOW_CONFIDENCE`。`F09-CR-MAJOR-01` 为 `RESOLVED`。Re-Review 为 `PASS_WITH_NOTES`。代码侧没有剩余 blocker。Commit 尚未执行，需要 Owner 另行批准。
+
+---
+
+## 35. F12 Resource Gate — RG-F12-006 Contract Revision
+
+本节是 **F12 Resource Gate governance**。它不是 F09 Reopen，也不是 F12 Requirement。
+
+**F09 Reopen remains CLOSED。**
+
+不开始定义 F12 端点、端到端实现、新状态、新 API 或新架构。
+
+### 35.1 Revision reason
+
+旧的 RG-F12-006 逐渐形成 MIXED_OBJECTIVE。它既要证明 Production Mapper 能否真实工作，又要求「平时接零活，没有固定单位」必须成为 `other_flexible_employment`，且 confidence `>= 0.80`，最终 `ACCEPTED`。
+
+静态诊断已确认：该 expected value 是 **BENCHMARK CONTRACT**，不是 Business Data 可以确定推出的 **BUSINESS TRUTH**。
+
+Owner 已批准 **OPTION C**：
+
+- Case A — Explicit Mapping Capability
+- Case B — Ambiguity Safety
+
+Gate ID 仍是 **RG-F12-006**。不创建 `RG-F12-006A` / `RG-F12-006B`。
+
+### 35.2 Historical contract preservation
+
+以下历史必须保留，不得改写为 PASS：
+
+| 阶段 | 合同语境 | 结果 | 摘要 |
+|------|----------|------|------|
+| Historical Probe 1 | 旧正向接受合同 | `FAILED / LOW_CONFIDENCE` | `slot_answer` / `other_flexible_employment` / confidence `0.72` |
+| Latest pre-revision probe | 旧正向接受合同 | `FAILED / UNEXPECTED_UTTERANCE_KIND` | `uncertain` / mapped_value none / confidence none |
+
+Option C 只从本节 Owner 批准后生效。**禁止**把上述探针 retroactive 记成新合同 PASS。
+
+### 35.3 Revised purpose
+
+RG-F12-006 验证 Production F09 同时具备两个能力：
+
+1. 对于受控数据能够唯一支持的明确 slot answer，可以通过真实 Production Mapper 正确映射并 `ACCEPTED`。
+2. 对于现有 Business Data 不足以唯一分类的表达，不会无依据地 `ACCEPTED` 并推进业务状态。
+
+只有：
+
+```text
+Case A = PASS
+AND
+Case B = PASS
+```
+
+才允许：
+
+```text
+RG-F12-006 = READY / VERIFIED
+```
+
+任一 Case 未验证或失败，不得 READY。
+
+### 35.4 Case A — Explicit Mapping Capability
+
+**CASE A — Explicit Mapping Capability**（明确答案映射能力）。
+
+未来执行必须使用当前 Production：Decision Graph、Business Repository、`source_condition_refs`、`project_allowed_value_semantics`、`AnswerMappingRequest`、`LlmAnswerMapper`、F07 policy、`OpenAICompatibleLlmProvider`（或当前真实等价 Provider）、Production parser、`mapper_output_to_interpretation`、`validate_slot_mapping`。
+
+禁止 Fake Mapper、Mock Provider、直接 `requests.post`、手工 Prompt、硬编码 semantic dictionary。
+
+### 35.5 Case A controlled positive sample
+
+| 字段 | 冻结值 |
+|------|--------|
+| `CASE_A_USER_TEXT` | 无雇工的个体工商户 |
+| `CASE_A_PENDING_SLOT` | `employment_type` |
+| `CASE_A_EXPECTED_VALUE` | `self_employed_without_employees` |
+
+**Evidence source：** 当前受控 Business Data `cond-applicant-01.source_text` =「无雇工的个体工商户」；`normalized_values` = `["self_employed_without_employees"]`；Decision Graph `employment_type.allowed_values` 包含该 machine value。
+
+**Selection reason：** exact controlled wording；与 machine value 一一对应；不是 residual「其他」类别；不依赖未记录常识；不是 paraphrase；不是 Explanation Request；不是 Terminal Confirmation。
+
+旧 Golden「平时接零活，没有固定单位」不适合作为 Case A。当前 Business Data 不能据此排除「无雇工的个体工商户」或「未在用人单位参加社会保险的非全日制从业人员」。该句保留在 Case B。
+
+Case A **只证明**明确受控答案可被 Production Mapper 正确识别。它 **不证明** 所有自然语言 paraphrase 都能正确分类。不得写「Mapper semantic understanding fully solved」。
+
+### 35.6 Case A acceptance contract
+
+**Semantic preconditions：**
+
+- pending slot = `employment_type`
+- expected value present = YES
+- `source_condition_refs` = 当前 Production refs
+- `SEMANTIC_COVERAGE` = `FULL`
+- `SEMANTIC_COUNT` = `3`
+- `SEMANTIC_REASON_CODE` = `full`
+- semantics = Repository-derived
+- ordering = `allowed_values` order
+- `MAPPER_MODE` = `ENRICHED`
+
+**Policy / provider preconditions：**
+
+- `LLM_REMOTE_DATA_POLICY_PROFILE` = `DEMO_APPROVED`
+- `POLICY_RESULT` = `ALLOW`
+- Production provider 真实调用
+- real Company HTTP = YES
+- HTTP calls = exactly **1**
+- parse = PASS
+
+禁止 best-of-N。禁止失败后不断重复直到高分。
+
+**Mapping acceptance（全部满足才 PASS）：**
+
+| 项 | 要求 |
+|----|------|
+| `UTTERANCE_KIND` | `slot_answer` |
+| `MAPPED_VALUE` | `self_employed_without_employees` |
+| `MEMBERSHIP_RESULT` | PASS |
+| `CONFIDENCE_THRESHOLD` | `0.80`（不得降低；无 confidence / semantic bonus） |
+| confidence | `>= 0.80` |
+| `CONFIDENCE_RESULT` | PASS |
+| `INTERPRETATION` | `ACCEPTED` |
+
+任一项不满足 → Case A FAIL。记录 `CASE_A_FAILED — EXPLICIT_MAPPING_CAPABILITY`。先 Owner Review，不自动修改 F09。
+
+### 35.7 Case B — Ambiguity Safety
+
+**CASE B — Ambiguity Safety**（模糊输入安全性）。
+
+| 字段 | 冻结值 |
+|------|--------|
+| `CASE_B_USER_TEXT` | 平时接零活，没有固定单位 |
+| `CASE_B_PENDING_SLOT` | `employment_type` |
+| `CASE_B_EXPECTED_VALUE` | **无。禁止定义** |
+
+特别禁止把 `other_flexible_employment` 重新定义为 Case B 的确定性目标。禁止 Case B PASS 条件包含「mapped_value 必须等于 other_flexible_employment」或「confidence 必须 >= 0.80」。
+
+Case B 验证：当 Business Data 不足以唯一支持一个 allowed value 时，Production F09 不能因为模型猜测形成无依据的业务推进。
+
+**`SAFETY_CONTRACT_SHOULD_TARGET_EFFECT = YES`。** 安全合同约束的是 business effect，不是模型必须固定返回某一个 kind。历史 `slot_answer` + `0.72` 与最新 `uncertain` 虽 kind 不同，但都没有形成 `ACCEPTED`。核心是 `NO_UNJUSTIFIED_ADVANCE`。
+
+Case B **只证明**当前这一条模糊样本不会造成错误 ACCEPT / advance。它 **不证明** 所有模糊表达都会安全处理。
+
+该句必须继续 **NOT** Explanation Request；否则不属于本 Gate 预期路径。
+
+### 35.8 Case B acceptance contract
+
+未来 Case B 同样必须使用 Production Repository、Production Decision Graph、FULL semantic projection、ENRICHED mapper、`DEMO_APPROVED` / ALLOW、真实 Production Provider、**exactly 1** real Company HTTP request、Production parser。
+
+若 provider / policy / projection / parser 没有正常运行，不能因为「没有推进」就算 Case B PASS。资源不可用 → `BLOCKED`，不是 Case PASS/FAIL。
+
+**在 Provider / parser 全部成功的前提下，可接受的模型层输出：**
+
+1. `kind = uncertain`，`mapped_value = none`，`confidence = none`
+2. `kind = slot_answer`，mapped value 属于 `allowed_values`，membership PASS，confidence `< 0.80`，final interpretation = `LOW_CONFIDENCE`
+
+两者都属于 **NOT ACCEPTED**。
+
+**不得自动 PASS：**
+
+- `explanation_request` 或明显不符合正常槽位回答语义的其它 kind → 记录 `CASE_B_UNEXPECTED_KIND`，交 Owner Review
+- `slot_answer` 但 mapped value 不属于 `allowed_values` → `INVALID_VALUE`；业务仍不得推进，但 Case B 不自动 PASS
+
+**Case B PASS 必须证明的业务效果：**
+
+| 效果 | 要求 |
+|------|------|
+| interpretation | `!= ACCEPTED` |
+| validated `employment_type` | 未写入 |
+| F04 advance | `0` |
+| `candidate_business_id` | 无新增 / 无改变 |
+| `confirmed_business_id` | 无新增 / 无改变 |
+| follow-up | `resume_current_slot` |
+| pending question | 原 `question_text` 仍可继续追问 |
+
+原 `question_text`：
+
+> 您属于哪种灵活就业情况？例如个体户、未在单位参保的非全日制人员，或其他灵活就业人员。
+
+若 interpretation = `ACCEPTED`，或 validated slot 被写入，或 F04 推进 → Case B FAIL，Reason = `AMBIGUOUS_INPUT_AUTO_ACCEPTED`。RG-F12-006 不能 READY。
+
+### 35.9 Overall PASS rule
+
+```text
+RG-F12-006 = READY / VERIFIED
+ONLY IF
+  Case A = PASS
+  AND
+  Case B = PASS
+```
+
+只证明模糊句没有推进，不能单独通过。必须仍然证明真实 LLM 能完成至少一个确定性 semantic mapping。
+
+### 35.10 Fresh evidence requirement
+
+新合同批准后：
+
+- Case A 必须重新执行一次真实调用
+- Case B 必须重新执行一次真实调用
+
+| Case | primary real HTTP |
+|------|-------------------|
+| Case A | exactly 1 |
+| Case B | exactly 1 |
+
+禁止多次调用挑最好结果。transport failure 是否允许重试，由 Owner Review 决定，不能当场 best-of-N。
+
+**不得**把历史 `0.72` 或最新 `uncertain` 直接记成新合同 PASS。
+
+env missing / network unavailable / provider unavailable / 非业务合同本身的 policy runtime blocked → `BLOCKED`。
+
+### 35.11 Non-blocking future enhancements
+
+| 项 | 对当前 RG-F12-006 关闭 | 说明 |
+|----|------------------------|------|
+| `QUESTION_TEXT_REQUIRED_FOR_RG006_CLOSURE` | **NO** | 缺 `question_text` 记为未来 calibration / enhancement，不是当前 blocker |
+| `DISCRIMINATION_RULES_REQUIRED_FOR_RG006_CLOSURE` | **NO** | Case B 不要求强制归到 other；Case A 已有明确受控类别 |
+| F09 Reopen now | **NOT REQUIRED** | F09 Reopen remains CLOSED |
+| Business Data modification now | **NOT REQUIRED** | 未来增加 discrimination criteria 属于独立增强 |
+| threshold revision | **NOT ALLOWED** | 保持 `0.80` |
+
+Option C 不是通过降低 confidence 门槛让 Gate 通过。
+
+### 35.12 Current formal status
+
+即使本节 Contract Revision 已写入文档：
+
+| 项 | 当前正式状态 |
+|----|--------------|
+| RG-F12-006 | `FAILED / UNEXPECTED_UTTERANCE_KIND` |
+| F12 Resource Gate | `BLOCKED` |
+| F09 Reopen | `CLOSED` |
+
+原因：新的 Case A / Case B 尚未按本节合同重新执行。
+
+下一步只能是 **OWNER REVIEW**。未获授权前不进入 Commit、Push、Case A 执行、Case B 执行或 F12 Requirement。
+
+**STOP — Do not execute Case A / Case B, Commit, Push, or F12 Requirement.**
