@@ -9,6 +9,9 @@ from redis import Redis
 
 from gov_service_agent.agent.explanation import LlmExplanationService
 from gov_service_agent.agent.interaction import LlmAnswerMapper
+from gov_service_agent.agent.materials_preview import (
+    ConfirmedBusinessMaterialsPreviewProcessor,
+)
 from gov_service_agent.agent.turn_processor import GovernmentAgentTurnProcessor
 from gov_service_agent.agent.workflow import (
     SlotInteractionDependencies,
@@ -46,12 +49,16 @@ def build_session_router(settings: Settings | None = None) -> APIRouter:
         business_repository=business_repository,
     )
     retrieval_service = SemanticRetrievalService(settings=resolved)
-    processor = GovernmentAgentTurnProcessor(
+    base_processor = GovernmentAgentTurnProcessor(
         decision_graph=decision_graph,
         business_repository=business_repository,
         retrieval_service=retrieval_service,
         slot_dependencies=slot_dependencies,
         terminal_dependencies=terminal_dependencies,
+    )
+    processor = ConfirmedBusinessMaterialsPreviewProcessor(
+        base_processor=base_processor,
+        business_repository=business_repository,
     )
 
     password: str | None = None

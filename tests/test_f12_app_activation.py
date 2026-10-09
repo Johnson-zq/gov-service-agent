@@ -6,6 +6,9 @@ import importlib
 
 from fastapi.testclient import TestClient
 
+from gov_service_agent.agent.materials_preview import (
+    ConfirmedBusinessMaterialsPreviewProcessor,
+)
 from gov_service_agent.agent.turn_processor import GovernmentAgentTurnProcessor
 from gov_service_agent.session.models import SessionTurnRequest, SessionTurnSuccess
 
@@ -36,6 +39,28 @@ def test_composition_uses_production_processor_without_eager_io(
     monkeypatch.setattr(composition, "Redis", SpyRedis)
     retrieve_calls = {"n": 0}
     complete_calls = {"n": 0}
+    lookup_calls = {"business": 0, "materials": 0}
+    original_business = composition.JsonBusinessRepository.get_business
+    original_materials = composition.JsonBusinessRepository.get_materials
+
+    def counting_business(self, business_id: str):  # type: ignore[no-untyped-def]
+        lookup_calls["business"] += 1
+        return original_business(self, business_id)
+
+    def counting_materials(self, business_id: str, **kwargs: object):  # type: ignore[no-untyped-def]
+        lookup_calls["materials"] += 1
+        return original_materials(self, business_id, **kwargs)
+
+    monkeypatch.setattr(
+        composition.JsonBusinessRepository,
+        "get_business",
+        counting_business,
+    )
+    monkeypatch.setattr(
+        composition.JsonBusinessRepository,
+        "get_materials",
+        counting_materials,
+    )
 
     class GuardRetrieval(SemanticRetrievalService):
         def retrieve(self, query: str | None):  # type: ignore[no-untyped-def]
@@ -73,7 +98,13 @@ def test_composition_uses_production_processor_without_eager_io(
             value = cell.cell_contents
             if hasattr(value, "_processor"):
                 processor = value._processor
-    assert isinstance(processor, GovernmentAgentTurnProcessor)
+    assert isinstance(processor, ConfirmedBusinessMaterialsPreviewProcessor)
+    assert isinstance(processor._base_processor, GovernmentAgentTurnProcessor)
+    assert (
+        processor._business_repository
+        is processor._base_processor._business_repository
+    )
+    assert lookup_calls == {"business": 0, "materials": 0}
     assert retrieve_calls["n"] == 0
     assert complete_calls["n"] == 0
     assert SpyRedis.commands == []
