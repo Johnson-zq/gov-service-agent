@@ -370,9 +370,11 @@ TEST_ADD：
 - `tests/test_f13_preview_session_integration.py`
 - `tests/test_f13_preview_activation.py`
 
-TEST_MODIFY：无。
+TEST_MODIFY：
 
-TEST_UNCHANGED：全部现有测试，包括三份 F12 测试。
+- `tests/test_f12_app_activation.py`。只允许更新 `test_composition_uses_production_processor_without_eager_io` 及其必要的导入和观察辅助。该文件其余断言、健康检查和公开接口覆盖保持。不允许跳过、预期失败、提前返回或删除整条测试。
+
+TEST_UNCHANGED：除上述单点更新外的全部现有测试。`tests/test_f12_turn_processor.py`、`tests/test_f12_session_integration.py`、`tests/test_business_repository.py` 和 `tests/test_business_data_contract.py` 不改。
 
 F13-Preview 测试默认不调用真实公司模型、真实 Redis、真实 PostgreSQL、向量加载或外网。依赖真实资源的旧测试在后续测试阶段静态排除，不靠试跑去碰外部资源。
 
@@ -403,7 +405,11 @@ F13-Preview 测试默认不调用真实公司模型、真实 Redis、真实 Post
 
 ### 激活测试
 
-`tests/test_f13_preview_activation.py` 检查 `build_session_router` 注入的处理器是 Preview Wrapper，并且其基础处理器是 `GovernmentAgentTurnProcessor`。两者共用同一个仓库实例。
+`tests/test_f13_preview_activation.py` 主要证明 F13 Preview 已被生产组合根激活。它检查交给 `SessionTurnService` 的处理器是 `ConfirmedBusinessMaterialsPreviewProcessor`，其内部基础处理器是 `GovernmentAgentTurnProcessor`，并且两者共用同一个仓库实例。
+
+`tests/test_f12_app_activation.py` 主要证明在这层包装存在之后，真实 F12 处理器仍被生产组合根使用，并且构造时没有提前读取材料。它不再要求最外层处理器直接是 `GovernmentAgentTurnProcessor`。新的观察是：最外层是 Preview，内层基础处理器是 `GovernmentAgentTurnProcessor`，仓库实例相同，`get_business` 和 `get_materials` 在构建时调用次数为 0。健康检查和无新增公开字段的合同保留。两份测试职责互补，不写成同一份内容。
+
+不得为了让旧断言通过而取消包装、让 Preview 继承 `GovernmentAgentTurnProcessor`，或把 F13 逻辑写回 F12。测试适配真实结构，生产代码不迁就过时断言。
 
 构造或导入应用时材料查询次数为 0。健康检查仍为 200 和 `{"status":"ok"}`。公开接口仍只有既有 `POST /api/v1/session/turn` 字段，不新增材料或编号字段。不依赖 FastAPI 私有路由内部结构；沿用现有激活测试已经采用的 OpenAPI 观察方式。
 
@@ -413,7 +419,9 @@ F13-Preview 测试默认不调用真实公司模型、真实 Redis、真实 Post
 
 - `tests/test_f12_turn_processor.py`
 - `tests/test_f12_session_integration.py`
-- `tests/test_f12_app_activation.py`
+- `tests/test_f12_app_activation.py`，允许按本节做组合结构观察更新，不允许跳过失败节点
+
+恢复测试时，先改这份激活测试里的过时断言，只重跑失败节点，再跑完整文件。然后继续尚未运行的业务数据回归和最终安全回归。生产代码不因这次测试范围修订而重写。
 
 业务数据相关的本地安全回归：
 
@@ -439,9 +447,9 @@ F13-Preview 测试默认不调用真实公司模型、真实 Redis、真实 Post
 | T-F13P-011 | 同文件，状态深度相等 | 假状态含 `f09`、`f10`、槽位、图转移 | 增强后状态不变 |
 | T-F13P-012 | 同文件，依赖形状 | Wrapper 构造参数 | 无模型依赖 |
 | T-F13P-013 | 同文件，依赖形状 | Wrapper 构造参数 | 无语义检索依赖 |
-| T-F13P-014 | `test_f13_preview_activation.py` | 组合根与 OpenAPI | 公开字段不变 |
+| T-F13P-014 | `test_f13_preview_activation.py` | 组合根与 OpenAPI | 最外层是 Preview，内层是 F12 处理器，公开字段不变 |
 | T-F13P-015 | `test_f13_preview_session_integration.py` | 真实会话服务 + 内存存储 | 重放不第二次调用处理器 |
-| T-F13P-016 | 现有三份 F12 测试，不改文件 | 既有 F12 测试替身 | Golden 回归继续通过 |
+| T-F13P-016 | 三份 F12 测试。仅 `test_f12_app_activation.py` 可更新组合观察 | 既有 F12 测试替身 | Golden 回归继续通过，不跳过失败测试 |
 
 ## 19. Requirement AC Traceability
 
@@ -464,7 +472,7 @@ F13-Preview 测试默认不调用真实公司模型、真实 Redis、真实 Post
 | AC-F13P-REQ15 | 未知业务退让 | T-F13P-009 |
 | AC-F13P-REQ16 | `replace` 不改 `state` | T-F13P-011 |
 | AC-F13P-REQ17 | 不写 `confirmed_business_id` | T-F13P-011 |
-| AC-F13P-REQ18 | 不改 F12、F10、F11 实现 | 文件范围 + F12 回归 |
+| AC-F13P-REQ18 | 不改 F12、F10、F11 实现 | 实现文件范围不变；F12 回归保留。激活测试只更新最外层观察 |
 | AC-F13P-REQ19 | 无模型依赖 | T-F13P-012 |
 | AC-F13P-REQ20 | 无检索依赖 | T-F13P-013 |
 | AC-F13P-REQ21 | 无数据库结构变更 | 范围审查 |
@@ -480,7 +488,7 @@ F13-Preview 测试默认不调用真实公司模型、真实 Redis、真实 Post
 | AC-F13P-REQ31 | Golden 名称来自受控数据 | T-F13P-001 |
 | AC-F13P-REQ32 | Golden 材料为“身份证” | T-F13P-001 |
 | AC-F13P-REQ33 | 渲染常量不含完整性承诺 | 渲染测试断言不含“仅需”“全部材料”“保证办理” |
-| AC-F13P-REQ34 | 不改 F12 文件 | 范围审查 |
+| AC-F13P-REQ34 | F12 实现保持关闭 | 不改 F12 处理器。仅允许更新 `test_f12_app_activation.py` 的组合观察 |
 | AC-F13P-REQ35 | 第 18 节全部 16 项有归属 | 测试阶段按该表执行 |
 
 ## 20. Failure Matrix
@@ -529,7 +537,7 @@ F13-Preview 自己的测试保持 0 次真实模型调用、0 次真实 Redis �
 
 不包含办理地点、渠道、条件、法律依据、时限、费用、咨询电话、大厅导航、导航图、业务知识图谱、政策百科、通用问答、同一会话改办事项、语音识别、前端、微信、自动填表和 RPA。
 
-不改需求文档、F12 文档、F12 代码和 F12 测试。
+不改需求文档、F12 文档和 F12 代码。F12 测试里，只有 `tests/test_f12_app_activation.py` 可以为适配外层 Preview 做单点断言更新。
 
 ## 26. Open Design Decisions
 
@@ -602,7 +610,7 @@ OPEN_BLOCKING_DESIGN_DECISIONS = 0。
 | AC-F13P-TD43 | 构造和导入时不查材料 |
 | AC-F13P-TD44 | 健康检查不受影响 |
 | AC-F13P-TD45 | 16 个需求场景全部映射 |
-| AC-F13P-TD46 | 要求 F12 回归 |
+| AC-F13P-TD46 | 要求 F12 回归。除 `tests/test_f12_app_activation.py` 为适配 F13 Wrapper 允许单点断言更新外，其它 F12 测试不改 |
 | AC-F13P-TD47 | F13P 测试不使用真实外部资源 |
 | AC-F13P-TD48 | 失败日志不含原文、状态和来源 |
 | AC-F13P-TD49 | 不输出内部来源元数据 |
@@ -614,10 +622,28 @@ OPEN_BLOCKING_DESIGN_DECISIONS = 0。
 - F12：CLOSED
 - F13-Preview Resource Gate：PASS / OWNER REVIEW APPROVED
 - F13-Preview Requirement：APPROVED / FROZEN / REMOTE-FROZEN
-- F13-Preview Technical Design：DRAFT COMPLETE / READY FOR OWNER REVIEW
-- Code：NOT STARTED
-- Test：NOT STARTED
+- F13-Preview Technical Design：REOPENED / TEST-SCOPE AMENDMENT DRAFT COMPLETE / READY FOR OWNER REVIEW
+- 历史技术设计冻结提交：`9cf72cce55008a194425ead8eccc79ede38cf0cb`
+- Code：IMPLEMENTED / OWNER REVIEW APPROVED / UNCHANGED
+- Test：FAIL / BLOCKED / AWAITING TD TEST-SCOPE AMENDMENT APPROVAL
+- Review：NOT STARTED
 - Commit：NOT STARTED
 - Push：NOT STARTED
 
-本技术设计尚未批准，也尚未冻结。
+当前工作区中的技术设计修订尚未提交，也尚未再次冻结。
+
+## 30. Test Scope Amendment
+
+AMENDMENT_TYPE = TEST_SCOPE_COMPATIBILITY。
+
+ROOT_CAUSE：`tests/test_f12_app_activation.py` 的 `test_composition_uses_production_processor_without_eager_io` 仍要求 `SessionTurnService` 的处理器直接是 `GovernmentAgentTurnProcessor`。已批准的生产结构是最外层 `ConfirmedBusinessMaterialsPreviewProcessor`，其内部基础处理器才是 `GovernmentAgentTurnProcessor`。
+
+PRODUCTION_DEFECT = NO。REQUIREMENT_DEFECT = NO。F12_DEFECT = NO。PRODUCTION_DESIGN_CHANGED = NO。REQUIREMENT_REOPEN = NO。
+
+生产新增、生产修改、包装顺序、仓库接口、公开过滤、退让边界和 F11 权限都保持原设计。不允许取消包装，不允许 Preview 继承 F12 处理器，不允许把材料逻辑写回 F12。
+
+未来测试恢复的可写路径恰好为 6 个：上述生产两文件、三份 F13 测试，以及 `tests/test_f12_app_activation.py`。第 6 个路径只用于这次组合观察更新，不用于改变 F12 业务语义。MAX_ALLOWED_CHANGED_PATHS = 6。
+
+已记录、但尚未构成整个测试阶段通过的结果：F13 单元 16 通过，F13 会话 3 通过，F13 激活 2 通过，F13 合计 21 通过，F12 处理器 18 通过，F12 会话 5 通过，F12 激活 1 通过且 1 个过时断言失败。`tests/test_business_repository.py`、`tests/test_business_data_contract.py` 和最终安全回归都是 PENDING TEST RESUME，不能写成已通过。
+
+恢复测试时不重写生产代码。顺序是：更新过时断言，重跑失败节点，重跑完整激活文件，按需要重跑 F13 合计，完成两份业务数据回归，再跑最终安全回归。是否恢复测试仍由 Owner 另行授权。允许修改旧激活测试的范围仅限该文件的这一处观察。不允许跳过失败回归。OPEN_BLOCKING_DESIGN_DECISIONS = 0。
