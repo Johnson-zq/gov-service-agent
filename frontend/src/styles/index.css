@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  --color-gov-50: #f4f7fb;
+  --color-gov-100: #e7eef6;
+  --color-gov-700: #0f4c81;
+  --color-gov-800: #0b3a66;
+  --color-gov-900: #082844;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #f4f7fb;
+  color: #0f172a;
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+:focus-visible {
+  outline: 2px solid #0f4c81;
+  outline-offset: 2px;
+}
+
+.agent-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.flow-connector {
+  height: 2px;
+  border: 0;
+  background: linear-gradient(90deg, transparent, #0f4c81, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
