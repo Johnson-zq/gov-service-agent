@@ -191,11 +191,14 @@ class StrictDotEnvSettingsSource(DotEnvSettingsSource):
 
         # Stage 2: parent maps env aliases to field names; keep only app fields.
         payload = super().__call__()
-        return {
+        scoped = {
             key: value
             for key, value in payload.items()
             if key in _APPLICATION_SETTINGS_FIELDS
         }
+        # API keys are process-environment only and must not be loaded from .env.
+        scoped.pop("llm_api_key", None)
+        return scoped
 
 
 class Settings(BaseSettings):
@@ -388,9 +391,9 @@ class Settings(BaseSettings):
     def _validate_llm_provider(cls, value: str | None) -> str | None:
         if value is None:
             return None
-        if value not in {"DEMO", "OPENAI_COMPATIBLE"}:
+        if value not in {"DEMO", "OPENAI_COMPATIBLE", "ANTHROPIC_COMPATIBLE"}:
             raise ValueError(
-                "LLM_PROVIDER must be DEMO or OPENAI_COMPATIBLE"
+                "LLM_PROVIDER must be DEMO, OPENAI_COMPATIBLE, or ANTHROPIC_COMPATIBLE"
             )
         return value
 

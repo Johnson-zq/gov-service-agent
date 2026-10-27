@@ -1,5 +1,6 @@
 """LLM Provider abstraction, Demo/Real providers, Data Policy, structured parse (F07)."""
 
+from gov_service_agent.llm.anthropic_compatible import AnthropicCompatibleLlmProvider
 from gov_service_agent.llm.demo import DemoLlmProvider
 from gov_service_agent.llm.openai_compatible import OpenAICompatibleLlmProvider
 from gov_service_agent.llm.policy import (
@@ -26,6 +27,7 @@ from gov_service_agent.llm.types import (
 )
 
 __all__ = [
+    "AnthropicCompatibleLlmProvider",
     "DataClassification",
     "DemoLlmProvider",
     "LlmErrorCode",

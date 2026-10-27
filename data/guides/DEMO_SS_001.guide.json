@@ -1,0 +1,314 @@
+{
+  "schema_version": "1",
+  "business_id": "DEMO_SS_001",
+  "source": {
+    "source_id": "src-demo-ss-001",
+    "source_title": "灵活就业人员社会保险费申报缴费",
+    "source_type": "OFFICIAL_GUIDE",
+    "source_file": "灵活就业人员社会保险费申报缴费.txt",
+    "source_section": null,
+    "effective_date": null,
+    "source_version": null,
+    "ingested_at": null,
+    "ingested_by": null
+  },
+  "source_sections": [
+    {
+      "section_id": "sec-scope",
+      "title": "一、适用范围",
+      "text": "服务对象：个人"
+    },
+    {
+      "section_id": "sec-law-national",
+      "title": "二、国家法律依据",
+      "text": "《中华人民共和国社会保险法》 全国人民代表大会常务委员会 2018-12-29 第六十条 无雇工的个体工商户、未在用人单位参加社会保险的非全日制从业人员以及其他灵活就业人员，可以直接向社会保险费征收机构缴纳社会保险费。"
+    },
+    {
+      "section_id": "sec-law-other",
+      "title": "三至五、省级、市级法律依据与县级规定",
+      "text": "省级法律依据：无。市级法律依据：无。县级规定：无。"
+    },
+    {
+      "section_id": "sec-authority",
+      "title": "六、实施主体",
+      "text": "区税务局"
+    },
+    {
+      "section_id": "sec-notice",
+      "title": "七、特别提示",
+      "text": "禁止性要求：无禁止性要求。数量限制：无数量限制。"
+    },
+    {
+      "section_id": "sec-conditions",
+      "title": "八、申报条件",
+      "text": "申请对象要求：无雇工的个体工商户、未在用人单位参加社会保险的非全日制从业人员以及其他灵活就业人员。行为规范要求：上述人员需参加社会保险的，应当依照法律、行政法规规定或者税务机关依照法律、行政法规规定确定的申报期限、申报内容、申报缴纳社会保险费。"
+    },
+    {
+      "section_id": "sec-materials",
+      "title": "九、申请材料",
+      "text": "身份证"
+    },
+    {
+      "section_id": "sec-process",
+      "title": "十、办理流程",
+      "text": "申请。受理：即办（当场）；窗口业务受理岗；资料齐全、符合法定形式的受理申请；资料不齐全或不符合法定形式的制作《税务事项通知书》（补正通知），一次性告知需补正的内容；依法不属于本机关职权或本业务受理范围的，制作《税务事项通知书》（不予受理通知）。审查/核：即办（当场）；业务审核岗；提交材料是否齐全、是否符合法定形式；材料需要核实的，核实相关材料；审核通过的予以办结；审核不通过的退回。办结：即办（当场）；业务审核岗；整理归档后将办理结果以指定方式送给申请人。送达：栏目未填写办理时限、办理人员和审批标准。"
+    },
+    {
+      "section_id": "sec-flowchart",
+      "title": "十一、办理流程图",
+      "text": "办理流程图栏目下未记载图示或步骤文字。"
+    },
+    {
+      "section_id": "sec-deadline",
+      "title": "十二、办结时限",
+      "text": "承诺办结期限：即办。时限说明栏未另行记载。受理、审查/核、办结环节写明办理时限为即办（当场）。"
+    },
+    {
+      "section_id": "sec-fees",
+      "title": "十三、收费依据及标准",
+      "text": "栏目列有收费项目名称、收费标准、减免说明，未记载具体收费项目、收费标准或减免说明。"
+    },
+    {
+      "section_id": "sec-result",
+      "title": "十四、审批结果名称",
+      "text": "办结结果名称：无。办结结果类型未填写。"
+    },
+    {
+      "section_id": "sec-consult",
+      "title": "十五、咨询方式",
+      "text": "咨询电话：0571-86438110。咨询地址：国家税务总局杭州市上城区税务局建国南路办公区（杭州市上城区小营街道建国南路42号）。"
+    },
+    {
+      "section_id": "sec-complaint",
+      "title": "十六、投诉方式",
+      "text": "投诉电话：0571-12345。投诉地址：国家税务总局杭州市上城区税务局建国南路办公区（杭州市上城区小营街道建国南路42号）。"
+    },
+    {
+      "section_id": "sec-location",
+      "title": "十七、受理地点和时间",
+      "text": "受理地点：国家税务总局杭州市上城区税务局建国南路办公区（杭州市上城区小营街道建国南路42号）。受理接待时间：法定工作日，上午8:30-12:00，下午14:00-17:30；执行午间值班。"
+    },
+    {
+      "section_id": "sec-onsite",
+      "title": "十八、办事者到办事现场次数",
+      "text": "办事者到办事现场次数：0次。必须现场办理原因说明：无。"
+    },
+    {
+      "section_id": "sec-faq-bank",
+      "title": "十九、常见问题 1",
+      "text": "灵活就业人员办理社会保险费签约银行扣缴协议缴费的方式有哪些？解答：灵活就业人员可通过银行窗口、支付宝、微信、税务自助办税终端、浙江省电子税务局等办理签约银行扣缴协议，委托银行从签约账户中代扣社保费。银行窗口：支持社保费代征的银行各网点均可办理签约。微信：搜索“浙江税务社保缴费”小程序，添加人员信息后通过“银行缴费协议”办理。支付宝：搜索“浙江税务社保缴费”小程序，通过“银行缴费协议”办理。税务自助办税终端：通过“我的缴费协议”办理。电子税务局：登录“浙江省电子税务局”，办理自然人用户注册后，通过“社保费办理”中的“我的缴费协议”办理。"
+    },
+    {
+      "section_id": "sec-faq-id",
+      "title": "十九、常见问题 2",
+      "text": "上门办理涉税事宜需要携带身份证件吗？解答：申请人通过办税窗口申请的，提供经办人、代理人身份证件原件，税务机关查验后退回；通过电子税务局等网上办税途径申请的，提供经办人、代理人身份证件原件电子照片或者扫描件。对已实名办税纳税人的经办人、代理人，免于提供个人身份证件。"
+    },
+    {
+      "section_id": "sec-faq-channel",
+      "title": "十九、常见问题 3",
+      "text": "灵活就业人员办理社会保险费申报缴款的渠道有哪些？解答：灵活就业人员可通过签约银行扣缴协议，委托银行从签约账户中代扣社保费；可通过银行柜面办理缴费；可登录支付宝、微信端的“浙江税务社保缴费”小程序办理缴费，并可选择开通自助缴费功能；可通过办税服务厅窗口、自助办税终端等办理缴费。"
+    }
+  ],
+  "knowledge_items": [
+    {
+      "item_id": "ki-scope",
+      "topic": "applicant_scope",
+      "subtopic": null,
+      "value": {"kind": "text", "text": "服务对象：个人。申请对象：无雇工的个体工商户、未在用人单位参加社会保险的非全日制从业人员以及其他灵活就业人员。行为规范：上述人员需参加社会保险的，应当依照法律、行政法规规定或者税务机关依照法律、行政法规规定确定的申报期限、申报内容、申报缴纳社会保险费。"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-demo-ss-001",
+      "section_id": "sec-conditions",
+      "excerpt": "申请对象要求：无雇工的个体工商户、未在用人单位参加社会保险的非全日制从业人员以及其他灵活就业人员。"
+    },
+    {
+      "item_id": "ki-legal",
+      "topic": "legal_basis",
+      "subtopic": null,
+      "value": {"kind": "text", "text": "国家法律依据：《中华人民共和国社会保险法》第六十条。无雇工的个体工商户、未在用人单位参加社会保险的非全日制从业人员以及其他灵活就业人员，可以直接向社会保险费征收机构缴纳社会保险费。省级法律依据：无。市级法律依据：无。县级规定：无。"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-demo-ss-001",
+      "section_id": "sec-law-national",
+      "excerpt": "第六十条 无雇工的个体工商户、未在用人单位参加社会保险的非全日制从业人员以及其他灵活就业人员，可以直接向社会保险费征收机构缴纳社会保险费。"
+    },
+    {
+      "item_id": "ki-authority",
+      "topic": "implementing_authority",
+      "subtopic": null,
+      "value": {"kind": "text", "text": "实施主体：区税务局。"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-demo-ss-001",
+      "section_id": "sec-authority",
+      "excerpt": "区税务局"
+    },
+    {
+      "item_id": "ki-notice",
+      "topic": "special_notice",
+      "subtopic": null,
+      "value": {"kind": "text", "text": "禁止性要求：无禁止性要求。数量限制：无数量限制。"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-demo-ss-001",
+      "section_id": "sec-notice",
+      "excerpt": "禁止性要求：无禁止性要求。数量限制：无数量限制。"
+    },
+    {
+      "item_id": "ki-materials",
+      "topic": "materials",
+      "subtopic": null,
+      "value": {"kind": "text", "text": "申请材料：身份证。"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-demo-ss-001",
+      "section_id": "sec-materials",
+      "excerpt": "身份证"
+    },
+    {
+      "item_id": "ki-process",
+      "topic": "process",
+      "subtopic": null,
+      "value": {"kind": "list", "items": ["申请。", "受理：即办（当场）。资料齐全、符合法定形式的，受理申请。资料不齐全或不符合法定形式的，制作《税务事项通知书》（补正通知），一次性告知需补正的内容。依法不属于本机关职权或本业务受理范围的，制作《税务事项通知书》（不予受理通知），告知不予受理的原因。", "审查/核：即办（当场）。提交材料是否齐全、是否符合法定形式。材料需要核实的，核实相关材料。审核通过的予以办结；审核不通过的退回。", "办结：即办（当场）。对申请材料整理归档后，将办理结果以指定方式送给申请人。", "送达：指南未填写办理时限、办理人员和审批标准。"]},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-demo-ss-001",
+      "section_id": "sec-process",
+      "excerpt": "受理即办（当场）。材料不齐全或不符合法定形式的出具《税务事项通知书》（补正通知）。不属于本机关职权或本业务受理范围的，制作《税务事项通知书》（不予受理通知）。审核不通过的退回。"
+    },
+    {
+      "item_id": "ki-process-correction",
+      "topic": "process",
+      "subtopic": "material_correction",
+      "value": {"kind": "text", "text": "受理环节：资料不齐全或不符合法定形式的，制作《税务事项通知书》（补正通知），一次性告知需补正的内容。"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-demo-ss-001",
+      "section_id": "sec-process",
+      "excerpt": "资料不齐全或不符合法定形式的，制作《税务事项通知书》（补正通知），一次性告知需补正的内容。"
+    },
+    {
+      "item_id": "ki-process-reject",
+      "topic": "process",
+      "subtopic": "out_of_scope",
+      "value": {"kind": "text", "text": "受理环节：依法不属于本机关职权或本业务受理范围的，制作《税务事项通知书》（不予受理通知），告知不予受理的原因。"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-demo-ss-001",
+      "section_id": "sec-process",
+      "excerpt": "依法不属于本机关职权或本业务受理范围的，制作《税务事项通知书》（不予受理通知），告知不予受理的原因。"
+    },
+    {
+      "item_id": "ki-flowchart",
+      "topic": "flow_chart",
+      "subtopic": null,
+      "value": {"kind": "text", "text": "办理流程图栏目下未记载图示或步骤文字。"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-demo-ss-001",
+      "section_id": "sec-flowchart",
+      "excerpt": "办理流程图栏目下未记载图示或步骤文字。"
+    },
+    {
+      "item_id": "ki-deadline",
+      "topic": "completion_time",
+      "subtopic": null,
+      "value": {"kind": "text", "text": "承诺办结期限：即办。时限说明栏未另行记载。受理、审查/核、办结环节写明为即办（当场）。资料不齐全、不符合受理范围或审核不通过时，指南另行写明补正通知、不予受理通知或退回，不能把即办理解成所有情形都当场办结。"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-demo-ss-001",
+      "section_id": "sec-deadline",
+      "excerpt": "承诺办结期限：即办"
+    },
+    {
+      "item_id": "ki-fees",
+      "topic": "fees",
+      "subtopic": null,
+      "value": {"kind": "text", "text": "办事指南“收费依据及标准”列有收费项目名称、收费标准、减免说明栏目，未记载具体收费项目、收费标准或减免说明。不能据此判断是否收费，也不能写成不收费。"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-demo-ss-001",
+      "section_id": "sec-fees",
+      "excerpt": "栏目列有收费项目名称、收费标准、减免说明，未记载具体收费项目、收费标准或减免说明。"
+    },
+    {
+      "item_id": "ki-result",
+      "topic": "result",
+      "subtopic": null,
+      "value": {"kind": "text", "text": "办结结果名称：无。办结结果类型未填写。"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-demo-ss-001",
+      "section_id": "sec-result",
+      "excerpt": "办结结果名称：无"
+    },
+    {
+      "item_id": "ki-consult",
+      "topic": "consultation",
+      "subtopic": null,
+      "value": {"kind": "text", "text": "咨询电话：0571-86438110。咨询地址：国家税务总局杭州市上城区税务局建国南路办公区（杭州市上城区小营街道建国南路42号）。"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-demo-ss-001",
+      "section_id": "sec-consult",
+      "excerpt": "咨询电话：0571-86438110"
+    },
+    {
+      "item_id": "ki-complaint",
+      "topic": "complaints",
+      "subtopic": null,
+      "value": {"kind": "text", "text": "投诉电话：0571-12345。投诉地址：国家税务总局杭州市上城区税务局建国南路办公区（杭州市上城区小营街道建国南路42号）。"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-demo-ss-001",
+      "section_id": "sec-complaint",
+      "excerpt": "投诉电话：0571-12345"
+    },
+    {
+      "item_id": "ki-location",
+      "topic": "handling_locations",
+      "subtopic": null,
+      "value": {"kind": "text", "text": "受理地点：国家税务总局杭州市上城区税务局建国南路办公区（杭州市上城区小营街道建国南路42号）。"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-demo-ss-001",
+      "section_id": "sec-location",
+      "excerpt": "国家税务总局杭州市上城区税务局建国南路办公区（杭州市上城区小营街道建国南路42号）"
+    },
+    {
+      "item_id": "ki-hours",
+      "topic": "handling_time",
+      "subtopic": null,
+      "value": {"kind": "text", "text": "受理接待时间：法定工作日，上午8:30-12:00，下午14:00-17:30；执行午间值班。"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-demo-ss-001",
+      "section_id": "sec-location",
+      "excerpt": "法定工作日，上午8:30-12:00，下午14:00-17:30；执行午间值班"
+    },
+    {
+      "item_id": "ki-onsite",
+      "topic": "on_site_requirement",
+      "subtopic": null,
+      "value": {"kind": "text", "text": "办事者到办事现场次数：0次。必须现场办理原因说明：无。"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-demo-ss-001",
+      "section_id": "sec-onsite",
+      "excerpt": "办事者到办事现场次数：0次。必须现场办理原因说明：无。"
+    },
+    {
+      "item_id": "ki-faq-bank",
+      "topic": "faq",
+      "subtopic": "bank_withholding",
+      "value": {"kind": "text", "text": "签约银行扣缴协议：可通过银行窗口、支付宝、微信、税务自助办税终端、浙江省电子税务局办理签约，委托银行从签约账户中代扣社保费。银行窗口：支持社保费代征的银行各网点均可办理签约。微信：搜索“浙江税务社保缴费”小程序，添加人员信息后通过“银行缴费协议”办理。支付宝：搜索“浙江税务社保缴费”小程序，通过“银行缴费协议”办理。税务自助办税终端：通过“我的缴费协议”办理。电子税务局：登录“浙江省电子税务局”，办理自然人用户注册后，通过“社保费办理”中的“我的缴费协议”办理。"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-demo-ss-001",
+      "section_id": "sec-faq-bank",
+      "excerpt": "支付宝：搜索“浙江税务社保缴费”小程序，通过“银行缴费协议”办理。"
+    },
+    {
+      "item_id": "ki-faq-id",
+      "topic": "faq",
+      "subtopic": "identity_document",
+      "value": {"kind": "text", "text": "上门办理涉税事宜：通过办税窗口申请的，提供经办人、代理人身份证件原件，税务机关查验后退回。网上办税途径提供身份证件原件电子照片或者扫描件。对已实名办税纳税人的经办人、代理人，免于提供个人身份证件。"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-demo-ss-001",
+      "section_id": "sec-faq-id",
+      "excerpt": "通过办税窗口申请的，提供经办人、代理人身份证件原件，税务机关查验后退回"
+    },
+    {
+      "item_id": "ki-channels",
+      "topic": "channels",
+      "subtopic": null,
+      "value": {"kind": "text", "text": "申报缴款渠道：可通过签约银行扣缴协议委托银行代扣；可通过银行柜面缴费；可登录支付宝、微信端的“浙江税务社保缴费”小程序办理缴费，并可选择开通自助缴费功能；可通过办税服务厅窗口、自助办税终端办理缴费。"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-demo-ss-001",
+      "section_id": "sec-faq-channel",
+      "excerpt": "可登录支付宝、微信端的“浙江税务社保缴费”小程序办理缴费"
+    }
+  ]
+}

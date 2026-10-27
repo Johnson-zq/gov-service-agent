@@ -449,7 +449,10 @@ def test_llm_provider_blank_becomes_none(monkeypatch: pytest.MonkeyPatch) -> Non
     assert settings.llm_provider is None
 
 
-@pytest.mark.parametrize("value", ["DEMO", "OPENAI_COMPATIBLE", "demo"])
+@pytest.mark.parametrize(
+    "value",
+    ["DEMO", "OPENAI_COMPATIBLE", "ANTHROPIC_COMPATIBLE", "demo"],
+)
 def test_valid_llm_provider(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
     monkeypatch.setenv("LLM_PROVIDER", value)
     settings = Settings(_env_file=None)
@@ -628,6 +631,36 @@ def test_llm_dotenv_keys_accepted(
     assert "LLM_PROVIDER" in KNOWN_DOTENV_KEYS
     assert "LLM_REMOTE_DATA_POLICY_PROFILE" in APPLICATION_DOTENV_KEYS
     assert "LLM_REMOTE_DATA_POLICY_PROFILE" in KNOWN_DOTENV_KEYS
+    assert settings.llm_api_key is None
+
+
+def test_llm_api_key_in_dotenv_is_ignored(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "APP_ENV=LOCAL\nLLM_API_KEY=dotenv-secret\n",
+        encoding="utf-8",
+    )
+    settings = Settings(_env_file=str(env_file))
+    assert settings.llm_api_key is None
+
+
+def test_llm_api_key_process_env_overrides_dotenv(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from pydantic import SecretStr
+
+    monkeypatch.setenv("LLM_API_KEY", "process-secret")
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "APP_ENV=LOCAL\nLLM_API_KEY=dotenv-secret\n",
+        encoding="utf-8",
+    )
+    settings = Settings(_env_file=str(env_file))
+    assert isinstance(settings.llm_api_key, SecretStr)
+    assert settings.llm_api_key.get_secret_value() == "process-secret"
 
 
 def test_typo_llm_dotenv_key_fail_fast(

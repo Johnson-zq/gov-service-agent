@@ -3,9 +3,18 @@
 from __future__ import annotations
 
 import copy
+import logging
 from enum import StrEnum
 from typing import Any, Mapping
 
+from gov_service_agent.agent.first_turn_extract import (
+    FirstTurnSlotExtractor,
+    LlmFirstTurnExtractor,
+)
+from gov_service_agent.agent.guide_route import (
+    GuideQueryHandler,
+    build_default_guide_handler,
+)
 from gov_service_agent.agent.interaction import (
     MappingValidationStatus,
     SlotInteractionContext,
@@ -45,6 +54,7 @@ from gov_service_agent.business_graph.transition import (
     advance_until_blocked,
 )
 from gov_service_agent.retrieval.service import SemanticRetrievalService
+from gov_service_agent.llm.types import RemoteDataPolicyProfile
 from gov_service_agent.retrieval.types import RetrievalCandidate, RetrievalStatus
 from gov_service_agent.session.models import AgentTurnResult, SessionTurnPublicStatus
 
@@ -86,6 +96,9 @@ class GovernmentAgentTurnProcessor:
         retrieval_service: SemanticRetrievalService,
         slot_dependencies: SlotInteractionDependencies,
         terminal_dependencies: TerminalConfirmationDependencies,
+        guide_handler: GuideQueryHandler | None = None,
+        load_default_guide: bool = True,
+        first_turn_extractor: FirstTurnSlotExtractor | None = None,
     ) -> None:
         if decision_graph is None:
             raise TypeError("decision_graph is required")
@@ -102,6 +115,24 @@ class GovernmentAgentTurnProcessor:
         self._retrieval_service = retrieval_service
         self._slot_dependencies = slot_dependencies
         self._terminal_dependencies = terminal_dependencies
+        if guide_handler is not None:
+            self._guide_handler: GuideQueryHandler | None = guide_handler
+        elif load_default_guide:
+            self._guide_handler = build_default_guide_handler(
+                decision_graph,
+                business_repository,
+            )
+        else:
+            self._guide_handler = None
+        if first_turn_extractor is not None:
+            self._first_turn_extractor: FirstTurnSlotExtractor | None = (
+                first_turn_extractor
+            )
+        else:
+            self._first_turn_extractor = _extractor_from_mapper(
+                slot_dependencies,
+                decision_graph,
+            )
         self._terminal_business_ids = frozenset(
             node.candidate_business_id
             for node in decision_graph.nodes
@@ -129,6 +160,20 @@ class GovernmentAgentTurnProcessor:
             )
 
         mode = _determine_turn_mode(working)
+        intercept = (
+            None
+            if self._guide_handler is None
+            else self._guide_handler.try_handle(working, mode=mode.value)
+        )
+        if intercept is not None:
+            artifacts = copy.deepcopy(working["artifacts"])
+            artifacts["f15"] = intercept.f15
+            return _awaiting_or_completed(
+                _replace_artifacts(working, artifacts),
+                response_text=intercept.response_text,
+                requires_user_input=intercept.requires_user_input,
+                public_status=intercept.public_status,
+            )
         if mode is _TurnMode.ALREADY_CONFIRMED:
             return self._handle_already_confirmed(working)
         if mode is _TurnMode.TERMINAL_CONFIRMATION:
@@ -212,10 +257,12 @@ class GovernmentAgentTurnProcessor:
                 f"unsupported retrieval status: {retrieval.status.value}"
             )
 
-        matched = _first_graph_matched_candidate(
-            retrieval.candidates,
-            self._terminal_business_ids,
-        )
+        matched_candidates = [
+            candidate
+            for candidate in retrieval.candidates
+            if candidate.business_id in self._terminal_business_ids
+        ]
+        matched = matched_candidates[0] if matched_candidates else None
         if matched is None:
             return _awaiting_or_completed(
                 state,
@@ -224,15 +271,29 @@ class GovernmentAgentTurnProcessor:
                 public_status=SessionTurnPublicStatus.AWAITING_USER_INPUT,
             )
 
+        proposed = self._propose_first_turn_slots(
+            state["input_text"],
+            retrieval.candidates,
+        )
         transition = advance_until_blocked(
             self._decision_graph,
             self._decision_graph.entry_node_id,
-            {},
+            proposed,
+        )
+        consumed = _consumed_slots(self._decision_graph, transition, proposed)
+        logging.getLogger("gov_service_agent").info(
+            "message=first_turn_slots_consumed proposed=%s consumed=%s",
+            ",".join(sorted(proposed)),
+            ",".join(sorted(consumed)),
         )
         projected = _project_initial_transition(
             state,
             transition,
-            direction_meta=_direction_artifact(matched),
+            direction_meta=_direction_artifact(
+                matched,
+                knowledge_unique=len(matched_candidates) == 1,
+            ),
+            current_slots=consumed,
         )
         if transition.status is TransitionStatus.TERMINAL_CANDIDATE:
             return self._prepare_terminal(projected, transition)
@@ -245,7 +306,7 @@ class GovernmentAgentTurnProcessor:
                 raise ValueError("initial NEED_SLOT missing question_text")
             return _awaiting_or_completed(
                 projected,
-                response_text=question,
+                response_text=_with_opening(consumed, question),
                 requires_user_input=True,
                 public_status=SessionTurnPublicStatus.AWAITING_USER_INPUT,
             )
@@ -257,6 +318,35 @@ class GovernmentAgentTurnProcessor:
         raise ValueError(
             f"unsupported initial transition status: {transition.status.value}"
         )
+
+    def _propose_first_turn_slots(
+        self,
+        user_text: str,
+        candidates: list[RetrievalCandidate],
+    ) -> dict[str, str]:
+        if self._first_turn_extractor is None:
+            return {}
+        matched = [
+            candidate
+            for candidate in candidates
+            if candidate.business_id in self._terminal_business_ids
+        ]
+        if len(matched) != 1:
+            return {}
+        try:
+            proposed = self._first_turn_extractor.accepted_slots(user_text)
+        except Exception:
+            logging.getLogger("gov_service_agent").info(
+                "message=first_turn_slots_skipped reason=unexpected_error"
+            )
+            return {}
+        if not isinstance(proposed, dict):
+            return {}
+        clean: dict[str, str] = {}
+        for key, value in proposed.items():
+            if isinstance(key, str) and isinstance(value, str) and value.strip():
+                clean[key] = value
+        return clean
 
     def _result_from_f09(self, state: AgentState) -> AgentTurnResult:
         f09 = read_f09(state["artifacts"])
@@ -562,14 +652,19 @@ def _project_initial_transition(
     transition: TransitionResult,
     *,
     direction_meta: dict[str, Any],
+    current_slots: Mapping[str, str] | None = None,
 ) -> AgentState:
     artifacts = copy.deepcopy(state["artifacts"])
     artifacts[_F12_ARTIFACT_KEY] = direction_meta
+    owned_slots = dict(current_slots or {})
     if transition.status in (
         TransitionStatus.NEED_SLOT,
         TransitionStatus.INVALID_SLOT,
     ):
-        slot_context = build_slot_interaction_context(transition, current_slots={})
+        slot_context = build_slot_interaction_context(
+            transition,
+            current_slots=owned_slots,
+        )
         f09 = empty_f09_namespace(slot_context)
         f09["business_transition"] = serialize_transition_result(transition)
         f09["response_text"] = transition.question_text
@@ -588,12 +683,80 @@ def _project_initial_transition(
     return _replace_artifacts(state, artifacts)
 
 
-def _direction_artifact(candidate: RetrievalCandidate) -> dict[str, Any]:
+def _extractor_from_mapper(
+    slot_dependencies: SlotInteractionDependencies,
+    decision_graph: DecisionGraph,
+) -> FirstTurnSlotExtractor | None:
+    mapper = slot_dependencies.answer_mapper
+    provider = getattr(mapper, "_provider", None)
+    if provider is None or not callable(getattr(provider, "complete", None)):
+        return None
+    profile = getattr(
+        provider,
+        "_remote_data_policy_profile",
+        RemoteDataPolicyProfile.DEFAULT,
+    )
+    if not isinstance(profile, RemoteDataPolicyProfile):
+        profile = RemoteDataPolicyProfile.DEFAULT
+    return LlmFirstTurnExtractor(
+        provider,
+        decision_graph,
+        remote_data_policy_profile=profile,
+    )
+
+
+def _consumed_slots(
+    graph: DecisionGraph,
+    transition: TransitionResult,
+    proposed: Mapping[str, str],
+) -> dict[str, str]:
+    """Slots the graph actually passed, excluding the node that is still blocked."""
+    by_id = {node.node_id: node for node in graph.nodes}
+    blocking: str | None = None
+    if transition.status in (
+        TransitionStatus.NEED_SLOT,
+        TransitionStatus.INVALID_SLOT,
+    ):
+        blocking = transition.current_node_id
+    consumed: dict[str, str] = {}
+    for node_id in transition.visited_node_ids:
+        if node_id == blocking:
+            continue
+        node = by_id.get(node_id)
+        if node is None or node.node_type is not NodeType.SLOT_GATE:
+            continue
+        slot_name = node.slot_name
+        if not isinstance(slot_name, str) or slot_name not in proposed:
+            continue
+        consumed[slot_name] = proposed[slot_name]
+    return consumed
+
+
+def _with_opening(consumed: Mapping[str, str], question: str) -> str:
+    if (
+        consumed.get("service_action") == "payment"
+        and consumed.get("payment_actor") == "self_payment"
+    ):
+        return f"明白了，您想自己缴纳社保。我再了解一下您的就业情况：\n{question}"
+    if consumed.get("service_action") == "payment" and "payment_actor" not in consumed:
+        return f"明白了，您想办理社保缴费。\n{question}"
+    return question
+
+
+def _direction_artifact(
+    candidate: RetrievalCandidate,
+    *,
+    knowledge_unique: bool,
+) -> dict[str, Any]:
     return {
         "matched_business_id": candidate.business_id,
         "rank": candidate.rank,
         "direction": candidate.direction,
         "eligibility_scope": candidate.eligibility_scope,
+        "knowledge_context_unique": knowledge_unique,
+        "knowledge_context_business_id": (
+            candidate.business_id if knowledge_unique else None
+        ),
     }
 
 

@@ -201,6 +201,7 @@ def test_confirmed_state_short_circuits_all_processing(monkeypatch: pytest.Monke
     again = _turn(processor, "还想问材料", state)
     assert again.public_status is SessionTurnPublicStatus.COMPLETED
     assert again.requires_user_input is False
+    assert "身份证" in again.response_text
     assert read_f10(again.state["artifacts"])["confirmed_business_id"] == "DEMO_SS_001"
     assert len(retrieval.queries) == retrieval_before
     assert len(mapper.requests) == mapper_before

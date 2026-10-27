@@ -99,6 +99,47 @@ def build_llm_provider(settings: object) -> LlmProvider:
             remote_data_policy_profile=profile,
         )
 
+    if provider == "ANTHROPIC_COMPATIBLE":
+        from gov_service_agent.llm.anthropic_compatible import (
+            AnthropicCompatibleLlmProvider,
+        )
+
+        base_url = getattr(settings, "llm_base_url", None)
+        model_id = getattr(settings, "llm_model_id", None)
+        api_key = getattr(settings, "llm_api_key", None)
+        secret: str | None = None
+        if api_key is not None:
+            getter = getattr(api_key, "get_secret_value", None)
+            secret = getter() if callable(getter) else str(api_key)
+
+        if (
+            base_url is None
+            or not str(base_url).strip()
+            or model_id is None
+            or not str(model_id).strip()
+            or secret is None
+            or not str(secret).strip()
+        ):
+            return _NotConfiguredProvider()
+
+        timeout = float(getattr(settings, "llm_timeout_seconds", 60.0))
+        max_retries = int(getattr(settings, "llm_max_retries", 1))
+        profile = getattr(
+            settings,
+            "llm_remote_data_policy_profile",
+            RemoteDataPolicyProfile.DEFAULT,
+        )
+        if not isinstance(profile, RemoteDataPolicyProfile):
+            profile = RemoteDataPolicyProfile.DEFAULT
+        return AnthropicCompatibleLlmProvider(
+            base_url=str(base_url).strip(),
+            api_key=str(secret).strip(),
+            model_id=str(model_id).strip(),
+            timeout_seconds=timeout,
+            max_retries=max_retries,
+            remote_data_policy_profile=profile,
+        )
+
     raise LlmProviderError(
         LlmErrorCode.UNKNOWN_PROVIDER,
         message="Unknown LLM provider configuration",
