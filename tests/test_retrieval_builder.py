@@ -57,7 +57,7 @@ def test_official_policy_loads() -> None:
     policy = load_admission_policy(POLICY_PATH)
     assert policy.schema_version == 1
     assert policy.policy_version == POLICY_VERSION
-    assert policy.allow_ids() == frozenset({"DEMO_SS_001"})
+    assert policy.allow_ids() == frozenset({"DEMO_SS_001", "IDCARD_RC_LT5Y"})
 
 
 def test_policy_does_not_auto_admit_by_prefix() -> None:
@@ -65,8 +65,10 @@ def test_policy_does_not_auto_admit_by_prefix() -> None:
     policy = load_admission_policy(POLICY_PATH)
     assert "DEMO_SS_002" not in policy.allow_ids()
     assert "DEMO_INV" not in policy.allow_ids()
-    drafts = draft_online_documents(_demo_repo(), policy)
-    assert [d.business_id for d in drafts] == ["DEMO_SS_001"]
+    idcard_path = REPO_ROOT / "data" / "demo" / "idcard_rc_lt5y.json"
+    repo = JsonBusinessRepository.from_paths([DEMO_SS_001_PATH, idcard_path])
+    drafts = draft_online_documents(repo, policy)
+    assert [d.business_id for d in drafts] == ["DEMO_SS_001", "IDCARD_RC_LT5Y"]
 
 
 @pytest.mark.parametrize(
@@ -163,7 +165,19 @@ def test_inactive_or_test_scope_not_eligible() -> None:
     repo = JsonBusinessRepository(
         {inactive.business.business_id: inactive}
     )
-    policy = load_admission_policy(POLICY_PATH)
+    policy = parse_admission_policy(
+        {
+            "schema_version": 1,
+            "policy_version": POLICY_VERSION,
+            "entries": [
+                {
+                    "business_id": "DEMO_SS_001",
+                    "decision": "ALLOW",
+                    "reason": "probe",
+                }
+            ],
+        }
+    )
     with pytest.raises(AdmissionPolicyError, match="ONLINE predicate"):
         draft_online_documents(repo, policy)
 
@@ -230,6 +244,8 @@ def test_builder_embed_shape_mismatch_no_replace() -> None:
     provider = FakeEmbeddingProvider(
         vectors_by_text={},
     )
+    idcard_path = REPO_ROOT / "data" / "demo" / "idcard_rc_lt5y.json"
+    repo = JsonBusinessRepository.from_paths([DEMO_SS_001_PATH, idcard_path])
 
     def _bad_embed(texts):  # type: ignore[no-untyped-def]
         return [[0.0] * 10 for _ in texts]
@@ -238,7 +254,7 @@ def test_builder_embed_shape_mismatch_no_replace() -> None:
     # dimension property still 768, but vectors wrong length
     with pytest.raises(ProjectionRebuildError):
         rebuild_projection(
-            repository=_demo_repo(),
+            repository=repo,
             store=store,  # type: ignore[arg-type]
             provider=provider,
             policy_path=POLICY_PATH,
@@ -247,27 +263,33 @@ def test_builder_embed_shape_mismatch_no_replace() -> None:
 
 
 def test_builder_success_and_replace_failure() -> None:
-    snapshot = load_snapshot(DEMO_SS_001_PATH)
-    text = build_retrieval_text(snapshot)
+    idcard_path = REPO_ROOT / "data" / "demo" / "idcard_rc_lt5y.json"
+    repo = JsonBusinessRepository.from_paths([DEMO_SS_001_PATH, idcard_path])
+    policy = load_admission_policy(POLICY_PATH)
+    drafts = draft_online_documents(repo, policy)
+    vectors_by_text = {
+        draft.retrieval_text: make_test_vector(5 + index)
+        for index, draft in enumerate(drafts)
+    }
     provider = FakeEmbeddingProvider(
         model_id="AI-ModelScope/gte-base-zh",
-        vectors_by_text={text: make_test_vector(5)},
+        vectors_by_text=vectors_by_text,
     )
     store = RecordingStore()
     key = rebuild_projection(
-        repository=_demo_repo(),
+        repository=repo,
         store=store,  # type: ignore[arg-type]
         provider=provider,
         policy_path=POLICY_PATH,
     )
     assert key
     assert len(store.replace_calls) == 1
-    assert len(store.replace_calls[0]["documents"]) == 1
+    assert len(store.replace_calls[0]["documents"]) == 2
 
     store2 = RecordingStore(fail_replace=True)
     with pytest.raises(ProjectionRebuildError, match="replace"):
         rebuild_projection(
-            repository=_demo_repo(),
+            repository=repo,
             store=store2,  # type: ignore[arg-type]
             provider=provider,
             policy_path=POLICY_PATH,

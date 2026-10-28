@@ -1,0 +1,428 @@
+{
+  "schema_version": "1",
+  "graph_id": "idcard_replace_lt5y",
+  "graph_version": 3,
+  "data_scope": "DEMO",
+  "entry_node_id": "idcard_entry",
+  "nodes": [
+    {
+      "node_id": "idcard_entry",
+      "node_type": "ENTRY",
+      "design_basis": "SYSTEM_DESIGNED",
+      "slot_name": null,
+      "allowed_values": null,
+      "question_text": null,
+      "candidate_business_id": null,
+      "unsupported_reason": null,
+      "source_condition_refs": null
+    },
+    {
+      "node_id": "handling_case",
+      "node_type": "SLOT_GATE",
+      "design_basis": "SYSTEM_DESIGNED",
+      "slot_name": "handling_case",
+      "allowed_values": ["lost_reissue", "damaged_replace", "other"],
+      "question_text": "您是居民身份证丢失需要补领，还是证件损坏需要换领？",
+      "candidate_business_id": null,
+      "unsupported_reason": null,
+      "source_condition_refs": null
+    },
+    {
+      "node_id": "submitted_photo_not_self",
+      "node_type": "SLOT_GATE",
+      "design_basis": "SYSTEM_DESIGNED",
+      "slot_name": "submitted_photo_not_self",
+      "allowed_values": ["yes", "no"],
+      "question_text": "您准备提交的现场正面照片是您本人吗？",
+      "candidate_business_id": null,
+      "unsupported_reason": null,
+      "source_condition_refs": null
+    },
+    {
+      "node_id": "appearance_change_major",
+      "node_type": "SLOT_GATE",
+      "design_basis": "SYSTEM_DESIGNED",
+      "slot_name": "appearance_change_major",
+      "allowed_values": ["yes", "no"],
+      "question_text": "您近期的相貌特征是否发生了较大变化？",
+      "candidate_business_id": null,
+      "unsupported_reason": null,
+      "source_condition_refs": null
+    },
+    {
+      "node_id": "bad_credit_record",
+      "node_type": "SLOT_GATE",
+      "design_basis": "SYSTEM_DESIGNED",
+      "slot_name": "bad_credit_record",
+      "allowed_values": ["yes", "no"],
+      "question_text": "您是否有不良信用记录？",
+      "candidate_business_id": null,
+      "unsupported_reason": null,
+      "source_condition_refs": null
+    },
+    {
+      "node_id": "biometric_info_status",
+      "node_type": "SLOT_GATE",
+      "design_basis": "SYSTEM_DESIGNED",
+      "slot_name": "biometric_info_status",
+      "allowed_values": ["within_5y_valid", "not_valid"],
+      "question_text": "您证件上的相片、指纹信息采集是否未满5年，并且信息仍然有效？",
+      "candidate_business_id": null,
+      "unsupported_reason": null,
+      "source_condition_refs": null
+    },
+    {
+      "node_id": "id_validity_band",
+      "node_type": "SLOT_GATE",
+      "design_basis": "SYSTEM_DESIGNED",
+      "slot_name": "id_validity_band",
+      "allowed_values": ["ge_10_years", "lt_10_years"],
+      "question_text": "您的居民身份证有效期是否为10年及以上？",
+      "candidate_business_id": null,
+      "unsupported_reason": null,
+      "source_condition_refs": null
+    },
+    {
+      "node_id": "hukou_region",
+      "node_type": "SLOT_GATE",
+      "design_basis": "SYSTEM_DESIGNED",
+      "slot_name": "hukou_region",
+      "allowed_values": ["zhejiang", "not_zhejiang"],
+      "question_text": "您的户口登记是否在浙江省？",
+      "candidate_business_id": null,
+      "unsupported_reason": null,
+      "source_condition_refs": null
+    },
+    {
+      "node_id": "terminal_idcard_rc_lt5y",
+      "node_type": "TERMINAL_CANDIDATE",
+      "design_basis": "SYSTEM_DESIGNED",
+      "slot_name": null,
+      "allowed_values": null,
+      "question_text": null,
+      "candidate_business_id": "IDCARD_RC_LT5Y",
+      "unsupported_reason": null,
+      "source_condition_refs": null
+    },
+    {
+      "node_id": "offline_window_guidance",
+      "node_type": "UNSUPPORTED",
+      "design_basis": "SOURCE_SUPPORTED",
+      "slot_name": null,
+      "allowed_values": null,
+      "question_text": null,
+      "candidate_business_id": null,
+      "unsupported_reason": "根据办事指南特别提示，您描述的情况应当到线下窗口申请办理，这不是拒绝补领或换领。请到户口所在地公安派出所办理。若需要全部受理点地址与接待时间，可以直接问我“办理地点”。现场拍照本身不等于整项申请必须线下办理。",
+      "source_condition_refs": [
+        {
+          "business_id": "IDCARD_RC_LT5Y",
+          "condition_id": "cond-offline-photo-not-self"
+        },
+        {
+          "business_id": "IDCARD_RC_LT5Y",
+          "condition_id": "cond-offline-appearance"
+        },
+        {
+          "business_id": "IDCARD_RC_LT5Y",
+          "condition_id": "cond-offline-credit"
+        }
+      ]
+    },
+    {
+      "node_id": "not_online_eligible",
+      "node_type": "UNSUPPORTED",
+      "design_basis": "SOURCE_SUPPORTED",
+      "slot_name": null,
+      "allowed_values": null,
+      "question_text": null,
+      "candidate_business_id": null,
+      "unsupported_reason": "按当前说明，暂不符合本指南记载的网上办理申报条件（相片指纹采集未满5年且有效、证件有效期10年及以上、户口登记在浙江省，以及丢失补领或损坏换领）。指南特别提示：不符合适用对象条件的，应当通过线下窗口申请办理。请到户口所在地公安派出所咨询；本指南在上城区列明多个受理派出所，具体地址以指南记载为准。",
+      "source_condition_refs": [
+        {
+          "business_id": "IDCARD_RC_LT5Y",
+          "condition_id": "cond-biometric-lt5y"
+        },
+        {
+          "business_id": "IDCARD_RC_LT5Y",
+          "condition_id": "cond-validity-ge10"
+        },
+        {
+          "business_id": "IDCARD_RC_LT5Y",
+          "condition_id": "cond-hukou-zj"
+        }
+      ]
+    },
+    {
+      "node_id": "idcard_fallback",
+      "node_type": "FALLBACK",
+      "design_basis": "SYSTEM_DESIGNED",
+      "slot_name": null,
+      "allowed_values": null,
+      "question_text": null,
+      "candidate_business_id": null,
+      "unsupported_reason": null,
+      "source_condition_refs": null
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "e-entry-handling",
+      "from_node_id": "idcard_entry",
+      "to_node_id": "handling_case",
+      "edge_kind": "ENTRY_FORWARD",
+      "design_basis": "SYSTEM_DESIGNED",
+      "match": null,
+      "source_condition_refs": null
+    },
+    {
+      "edge_id": "e-handling-lost",
+      "from_node_id": "handling_case",
+      "to_node_id": "submitted_photo_not_self",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SOURCE_SUPPORTED",
+      "match": {
+        "slot": "handling_case",
+        "operator": "EQ",
+        "value": "lost_reissue"
+      },
+      "source_condition_refs": [
+        {
+          "business_id": "IDCARD_RC_LT5Y",
+          "condition_id": "cond-handling-lost"
+        }
+      ]
+    },
+    {
+      "edge_id": "e-handling-damaged",
+      "from_node_id": "handling_case",
+      "to_node_id": "submitted_photo_not_self",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SOURCE_SUPPORTED",
+      "match": {
+        "slot": "handling_case",
+        "operator": "EQ",
+        "value": "damaged_replace"
+      },
+      "source_condition_refs": [
+        {
+          "business_id": "IDCARD_RC_LT5Y",
+          "condition_id": "cond-handling-damaged"
+        }
+      ]
+    },
+    {
+      "edge_id": "e-handling-other",
+      "from_node_id": "handling_case",
+      "to_node_id": "idcard_fallback",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SYSTEM_DESIGNED",
+      "match": {
+        "slot": "handling_case",
+        "operator": "EQ",
+        "value": "other"
+      },
+      "source_condition_refs": null
+    },
+    {
+      "edge_id": "e-photo-not-self-yes",
+      "from_node_id": "submitted_photo_not_self",
+      "to_node_id": "offline_window_guidance",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SOURCE_SUPPORTED",
+      "match": {
+        "slot": "submitted_photo_not_self",
+        "operator": "EQ",
+        "value": "yes"
+      },
+      "source_condition_refs": [
+        {
+          "business_id": "IDCARD_RC_LT5Y",
+          "condition_id": "cond-offline-photo-not-self"
+        }
+      ]
+    },
+    {
+      "edge_id": "e-photo-not-self-no",
+      "from_node_id": "submitted_photo_not_self",
+      "to_node_id": "appearance_change_major",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SYSTEM_DESIGNED",
+      "match": {
+        "slot": "submitted_photo_not_self",
+        "operator": "EQ",
+        "value": "no"
+      },
+      "source_condition_refs": null
+    },
+    {
+      "edge_id": "e-appearance-yes",
+      "from_node_id": "appearance_change_major",
+      "to_node_id": "offline_window_guidance",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SOURCE_SUPPORTED",
+      "match": {
+        "slot": "appearance_change_major",
+        "operator": "EQ",
+        "value": "yes"
+      },
+      "source_condition_refs": [
+        {
+          "business_id": "IDCARD_RC_LT5Y",
+          "condition_id": "cond-offline-appearance"
+        }
+      ]
+    },
+    {
+      "edge_id": "e-appearance-no",
+      "from_node_id": "appearance_change_major",
+      "to_node_id": "bad_credit_record",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SYSTEM_DESIGNED",
+      "match": {
+        "slot": "appearance_change_major",
+        "operator": "EQ",
+        "value": "no"
+      },
+      "source_condition_refs": null
+    },
+    {
+      "edge_id": "e-credit-yes",
+      "from_node_id": "bad_credit_record",
+      "to_node_id": "offline_window_guidance",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SOURCE_SUPPORTED",
+      "match": {
+        "slot": "bad_credit_record",
+        "operator": "EQ",
+        "value": "yes"
+      },
+      "source_condition_refs": [
+        {
+          "business_id": "IDCARD_RC_LT5Y",
+          "condition_id": "cond-offline-credit"
+        }
+      ]
+    },
+    {
+      "edge_id": "e-credit-no",
+      "from_node_id": "bad_credit_record",
+      "to_node_id": "biometric_info_status",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SYSTEM_DESIGNED",
+      "match": {
+        "slot": "bad_credit_record",
+        "operator": "EQ",
+        "value": "no"
+      },
+      "source_condition_refs": null
+    },
+    {
+      "edge_id": "e-bio-ok",
+      "from_node_id": "biometric_info_status",
+      "to_node_id": "id_validity_band",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SOURCE_SUPPORTED",
+      "match": {
+        "slot": "biometric_info_status",
+        "operator": "EQ",
+        "value": "within_5y_valid"
+      },
+      "source_condition_refs": [
+        {
+          "business_id": "IDCARD_RC_LT5Y",
+          "condition_id": "cond-biometric-lt5y"
+        }
+      ]
+    },
+    {
+      "edge_id": "e-bio-not",
+      "from_node_id": "biometric_info_status",
+      "to_node_id": "not_online_eligible",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SOURCE_SUPPORTED",
+      "match": {
+        "slot": "biometric_info_status",
+        "operator": "EQ",
+        "value": "not_valid"
+      },
+      "source_condition_refs": [
+        {
+          "business_id": "IDCARD_RC_LT5Y",
+          "condition_id": "cond-biometric-lt5y"
+        }
+      ]
+    },
+    {
+      "edge_id": "e-validity-ok",
+      "from_node_id": "id_validity_band",
+      "to_node_id": "hukou_region",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SOURCE_SUPPORTED",
+      "match": {
+        "slot": "id_validity_band",
+        "operator": "EQ",
+        "value": "ge_10_years"
+      },
+      "source_condition_refs": [
+        {
+          "business_id": "IDCARD_RC_LT5Y",
+          "condition_id": "cond-validity-ge10"
+        }
+      ]
+    },
+    {
+      "edge_id": "e-validity-not",
+      "from_node_id": "id_validity_band",
+      "to_node_id": "not_online_eligible",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SOURCE_SUPPORTED",
+      "match": {
+        "slot": "id_validity_band",
+        "operator": "EQ",
+        "value": "lt_10_years"
+      },
+      "source_condition_refs": [
+        {
+          "business_id": "IDCARD_RC_LT5Y",
+          "condition_id": "cond-validity-ge10"
+        }
+      ]
+    },
+    {
+      "edge_id": "e-hukou-ok",
+      "from_node_id": "hukou_region",
+      "to_node_id": "terminal_idcard_rc_lt5y",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SOURCE_SUPPORTED",
+      "match": {
+        "slot": "hukou_region",
+        "operator": "EQ",
+        "value": "zhejiang"
+      },
+      "source_condition_refs": [
+        {
+          "business_id": "IDCARD_RC_LT5Y",
+          "condition_id": "cond-hukou-zj"
+        }
+      ]
+    },
+    {
+      "edge_id": "e-hukou-not",
+      "from_node_id": "hukou_region",
+      "to_node_id": "not_online_eligible",
+      "edge_kind": "SLOT_MATCH",
+      "design_basis": "SOURCE_SUPPORTED",
+      "match": {
+        "slot": "hukou_region",
+        "operator": "EQ",
+        "value": "not_zhejiang"
+      },
+      "source_condition_refs": [
+        {
+          "business_id": "IDCARD_RC_LT5Y",
+          "condition_id": "cond-hukou-zj"
+        }
+      ]
+    }
+  ]
+}

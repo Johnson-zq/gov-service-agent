@@ -1,0 +1,34 @@
+{
+  "schema_version": "1",
+  "business_id": "TEST_F16_STUB",
+  "source": {
+    "source_id": "src-f16-stub",
+    "source_title": "F16测试夹具事项（非正式政务事实）",
+    "source_type": "OFFICIAL_GUIDE",
+    "source_file": "TEST_F16_STUB.txt",
+    "source_section": null,
+    "effective_date": null,
+    "source_version": null,
+    "ingested_at": null,
+    "ingested_by": null
+  },
+  "source_sections": [
+    {
+      "section_id": "sec-materials",
+      "title": "九、申请材料",
+      "text": "测试夹具材料A"
+    }
+  ],
+  "knowledge_items": [
+    {
+      "item_id": "ki-stub-materials",
+      "topic": "materials",
+      "subtopic": null,
+      "value": {"kind": "text", "text": "测试夹具材料A"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-f16-stub",
+      "section_id": "sec-materials",
+      "excerpt": "测试夹具材料A"
+    }
+  ]
+}

@@ -46,6 +46,7 @@ class SemanticRetrievalService:
         self._settings = settings or get_settings()
         self._provider_override = provider
         self._store_override = store
+        self._cached_provider: EmbeddingProvider | None = None
         self._policy_path = (
             Path(policy_path)
             if policy_path is not None
@@ -333,6 +334,8 @@ class SemanticRetrievalService:
     def _resolve_provider(self) -> EmbeddingProvider | RetrievalResult:
         if self._provider_override is not None:
             return self._provider_override
+        if self._cached_provider is not None:
+            return self._cached_provider
         s = self._settings
         assert s.embedding_provider is not None
         assert s.embedding_model_id is not None
@@ -344,12 +347,15 @@ class SemanticRetrievalService:
                 top_k=s.retrieval_top_k,
                 min_score=s.retrieval_min_score,
             )
-        return LocalSentenceTransformerProvider(
+        # Reuse one provider per service instance so LOCAL models are not
+        # reloaded on every turn (Owner observed embedding_model_loaded per POST).
+        self._cached_provider = LocalSentenceTransformerProvider(
             model_id=s.embedding_model_id,
             model_path=s.embedding_model_path,
             device=s.embedding_device,
             expected_dimension=EXPECTED_EMBEDDING_DIMENSION,
         )
+        return self._cached_provider
 
     def _not_ready(
         self,

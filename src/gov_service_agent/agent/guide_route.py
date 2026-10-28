@@ -19,6 +19,7 @@ from gov_service_agent.guide_knowledge.models import load_guide_document
 from gov_service_agent.guide_knowledge.recognize import (
     ClarificationOption,
     RecognitionKind,
+    is_resume_handling,
     match_clarification_topic,
     recognize_guide_utterance,
 )
@@ -37,10 +38,17 @@ from gov_service_agent.guide_knowledge.service import (
     GovernmentKnowledgeService,
     KnowledgeQueryStatus,
 )
+from gov_service_agent.matters.registry import MatterRegistry
 from gov_service_agent.session.models import SessionTurnPublicStatus
 
 _ACTIVE_MODES = frozenset(
-    {"already_confirmed", "terminal_confirmation", "slot_interaction"}
+    {
+        "already_confirmed",
+        "terminal_confirmation",
+        "slot_interaction",
+        # After offline divert (UNSUPPORTED), still answer fees/locations etc.
+        "safe_hold",
+    }
 )
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _DEFAULT_GUIDE = _REPO_ROOT / "data" / "guides" / "DEMO_SS_001.guide.json"
@@ -61,23 +69,40 @@ class GuideQueryHandler:
         decision_graph: DecisionGraph,
         knowledge_service: GovernmentKnowledgeService,
         renderer: GuideAnswerRenderer | None = None,
+        matter_registry: MatterRegistry | None = None,
     ) -> None:
         self._graph = decision_graph
         self._knowledge = knowledge_service
         self._renderer = renderer or TemplateGuideRenderer()
+        self._registry = matter_registry
 
     def try_handle(self, state: AgentState, *, mode: str) -> GuideIntercept | None:
         if mode not in _ACTIVE_MODES:
             return None
         user_text = state["input_text"]
+        graph = self._graph_for(state)
         pending = _read_pending(state)
         if pending is not None:
-            return self._handle_pending(state, mode, user_text, pending)
+            return self._handle_pending(state, mode, user_text, pending, graph)
         if mode == "terminal_confirmation" and _is_explicit_confirmation(user_text):
             return None
+        # Resume handling: re-show pending slot question; do not map as a slot value.
+        if mode == "slot_interaction" and is_resume_handling(user_text):
+            question = _pending_question(state)
+            if isinstance(question, str) and question.strip():
+                return self._reply(
+                    state,
+                    mode,
+                    f"好的，我们继续刚才的办理：\n{question.strip()}",
+                    pending=None,
+                    status="RESUME_HANDLING",
+                    include_resume=False,
+                )
+        active_business_id, _ = _resolve_business_context(state, mode, graph)
         recognition = recognize_guide_utterance(
             user_text,
             pending_question_text=_pending_question(state) if mode == "slot_interaction" else None,
+            active_business_id=active_business_id,
         )
         if recognition.kind is RecognitionKind.FALL_THROUGH:
             return None
@@ -109,6 +134,39 @@ class GuideQueryHandler:
             recognition.topic,
             recognition.subtopic,
             recognition.lookups,
+            graph=graph,
+        )
+
+    def consult_with_business(
+        self,
+        state: AgentState,
+        *,
+        business_id: str,
+        topic: str,
+        subtopic: str | None = None,
+        lookups: tuple[tuple[str, str | None], ...] = (),
+    ) -> GuideIntercept:
+        """Answer a guide topic for a F06-admitted matter without confirming it."""
+        specs = lookups or ((topic, subtopic),)
+        result = self._knowledge.query_many(business_id, specs)
+        if (
+            result.status is KnowledgeQueryStatus.NOT_FOUND
+            and subtopic is not None
+            and not lookups
+        ):
+            result = self._knowledge.query(business_id, topic, None)
+        answer = self._renderer.render_facts(result)
+        title = self._knowledge.source_title(business_id) or business_id
+        prefixed = f"如果您咨询的是“{title}”事项：\n{answer}"
+        return GuideIntercept(
+            response_text=prefixed,
+            requires_user_input=True,
+            public_status=SessionTurnPublicStatus.AWAITING_USER_INPUT,
+            f15={
+                "pending_clarification": None,
+                "last_status": result.status.value,
+                "consult_only": True,
+            },
         )
 
     def _handle_pending(
@@ -117,17 +175,24 @@ class GuideQueryHandler:
         mode: str,
         user_text: str,
         pending: dict[str, Any],
+        graph: DecisionGraph,
     ) -> GuideIntercept:
         options = _options_from_payload(pending["options"])
         topic = match_clarification_topic(user_text, options)
         if topic is None:
-            recognition = recognize_guide_utterance(user_text, pending_question_text=None)
+            active_business_id, _ = _resolve_business_context(state, mode, graph)
+            recognition = recognize_guide_utterance(
+                user_text,
+                pending_question_text=None,
+                active_business_id=active_business_id,
+            )
             if recognition.kind is RecognitionKind.TOPIC and recognition.topic is not None:
                 return self._answer_topic(
                     state,
                     mode,
                     recognition.topic,
                     recognition.subtopic,
+                    graph=graph,
                 )
             return self._reply(
                 state,
@@ -137,7 +202,17 @@ class GuideQueryHandler:
                 status="AMBIGUOUS",
                 include_resume=False,
             )
-        return self._answer_topic(state, mode, topic, None)
+        return self._answer_topic(state, mode, topic, None, graph=graph)
+
+    def _graph_for(self, state: AgentState) -> DecisionGraph:
+        bound = _bound_business_id(state)
+        if self._registry is not None and bound is not None:
+            expected = _bound_graph_id(state)
+            return self._registry.require_graph_consistent(
+                bound,
+                expected_graph_id=expected,
+            )
+        return self._graph
 
     def _ask_clarification(
         self,
@@ -172,8 +247,15 @@ class GuideQueryHandler:
         topic: str,
         subtopic: str | None,
         lookups: tuple[tuple[str, str | None], ...] = (),
+        *,
+        graph: DecisionGraph | None = None,
     ) -> GuideIntercept:
-        business_id, context_kind = _resolve_business_context(state, mode, self._graph)
+        resolved_graph = graph if graph is not None else self._graph_for(state)
+        business_id, context_kind = _resolve_business_context(
+            state,
+            mode,
+            resolved_graph,
+        )
         if business_id is None:
             message = (
                 render_matter_unclear()
@@ -229,18 +311,46 @@ class GuideQueryHandler:
 def build_default_guide_handler(
     decision_graph: DecisionGraph,
     business_repository: Any,
+    *,
+    matter_registry: MatterRegistry | None = None,
 ) -> GuideQueryHandler | None:
-    if not _DEFAULT_GUIDE.is_file():
+    documents: dict[str, Any] = {}
+    if matter_registry is not None:
+        documents.update(matter_registry.load_guide_documents())
+    if not documents and _DEFAULT_GUIDE.is_file():
+        document = load_guide_document(_DEFAULT_GUIDE)
+        documents = {document.business_id: document}
+    if not documents:
         return None
-    document = load_guide_document(_DEFAULT_GUIDE)
     service = GovernmentKnowledgeService(
-        {document.business_id: document},
+        documents,
         business_repository=business_repository,
     )
     return GuideQueryHandler(
         decision_graph=decision_graph,
         knowledge_service=service,
+        matter_registry=matter_registry,
     )
+
+
+def _bound_business_id(state: AgentState) -> str | None:
+    f12 = state["artifacts"].get("f12")
+    if not isinstance(f12, dict):
+        return None
+    bound = f12.get("bound_business_id")
+    if isinstance(bound, str) and bound.strip():
+        return bound.strip()
+    return None
+
+
+def _bound_graph_id(state: AgentState) -> str | None:
+    f12 = state["artifacts"].get("f12")
+    if not isinstance(f12, dict):
+        return None
+    graph_id = f12.get("bound_graph_id")
+    if isinstance(graph_id, str) and graph_id.strip():
+        return graph_id.strip()
+    return None
 
 
 def _is_explicit_confirmation(user_text: str) -> bool:
@@ -303,6 +413,10 @@ def _resume_contract(
     mode: str,
 ) -> tuple[str | None, bool, SessionTurnPublicStatus]:
     if mode == "already_confirmed":
+        return None, False, SessionTurnPublicStatus.COMPLETED
+    if mode == "safe_hold":
+        # Online path ended (e.g. offline divert); do not re-ask eligibility
+        # or show “等待您补充信息”.
         return None, False, SessionTurnPublicStatus.COMPLETED
     if mode == "terminal_confirmation":
         response = read_f10(state["artifacts"]).get("response_text")

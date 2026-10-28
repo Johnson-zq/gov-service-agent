@@ -109,7 +109,13 @@ def test_empty_and_whitespace_invalid_query() -> None:
 
 
 def test_provider_not_configured() -> None:
-    settings = Settings(_env_file=None)
+    # Explicit None fields so process EMBEDDING_* env cannot mark provider ready.
+    settings = Settings(
+        embedding_provider=None,
+        embedding_model_id=None,
+        embedding_model_path=None,
+        _env_file=None,
+    )
     service = SemanticRetrievalService(settings=settings, store=FakeStore())
     result = service.retrieve("交社保")
     assert result.status == RetrievalStatus.NOT_READY
@@ -277,3 +283,34 @@ def test_score_higher_is_better_ordering() -> None:
     scores = [1.0 - d for d in distances]
     ordered = sorted(zip(scores, ["a", "b", "c"], strict=True), reverse=True)
     assert [item[1] for item in ordered] == ["b", "c", "a"]
+
+
+def test_local_provider_cached_across_retrieves(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = _configured_settings()
+    key = _expected_key(settings)
+    query = "交社保"
+    query_vec = make_test_vector(1)
+    creations: list[object] = []
+
+    class CountingProvider(FakeEmbeddingProvider):
+        def __init__(self, **kwargs: object) -> None:
+            creations.append(kwargs)
+            super().__init__(
+                model_id=str(kwargs.get("model_id") or "fake-model"),
+                vectors_by_text={query: query_vec},
+            )
+
+    monkeypatch.setattr(
+        "gov_service_agent.retrieval.service.LocalSentenceTransformerProvider",
+        CountingProvider,
+    )
+    store = FakeStore(
+        meta=FakeMeta(projection_key=key, document_count=1),
+        hits=[FakeHit("DEMO_SS_001", "灵活就业", "social_security", "ONLINE", 0.1)],
+    )
+    service = SemanticRetrievalService(settings=settings, store=store)
+    first = service.retrieve(query)
+    second = service.retrieve(query)
+    assert first.status == RetrievalStatus.CANDIDATES
+    assert second.status == RetrievalStatus.CANDIDATES
+    assert len(creations) == 1

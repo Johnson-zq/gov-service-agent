@@ -274,17 +274,24 @@ def test_material_variants_and_alipay_auto_debit() -> None:
 
 
 def test_multiple_retrieval_candidates_do_not_answer_a_specific_guide() -> None:
+    from pathlib import Path
+
     from gov_service_agent.agent.workflow import (
         SlotInteractionDependencies,
         TerminalConfirmationDependencies,
     )
     from gov_service_agent.business_graph.loader import load_decision_graph
+    from gov_service_agent.matters.registry import MatterRegistry
     from gov_service_agent.retrieval.types import (
         RetrievalCandidate,
         RetrievalResult,
         RetrievalStatus,
     )
     from tests.test_f15_guide_qa import _GRAPH_PATH
+
+    stub_root = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "f16_stub_matter"
+    stub_graph = load_decision_graph(stub_root / "TEST_F16_STUB.graph.json")
+    demo_graph = load_decision_graph(_GRAPH_PATH)
 
     class TwoCandidates:
         def retrieve(self, query: str) -> RetrievalResult:
@@ -297,11 +304,11 @@ def test_multiple_retrieval_candidates_do_not_answer_a_specific_guide() -> None:
                 eligibility_scope="ONLINE",
             )
             other = RetrievalCandidate(
-                business_id="DEMO_SS_001",
-                display_name="demo-2",
+                business_id="TEST_F16_STUB",
+                display_name="stub",
                 score=0.9,
                 rank=2,
-                direction="social_security",
+                direction="test_fixture",
                 eligibility_scope="ONLINE",
             )
             return RetrievalResult(
@@ -310,26 +317,42 @@ def test_multiple_retrieval_candidates_do_not_answer_a_specific_guide() -> None:
                 candidates=[candidate, other],
             )
 
-    graph = load_decision_graph(_GRAPH_PATH)
-    repository = JsonBusinessRepository.from_paths([_BUSINESS_PATH])
+    registry = MatterRegistry.from_loaded(
+        {
+            "DEMO_SS_001": demo_graph,
+            "TEST_F16_STUB": stub_graph,
+        }
+    )
+    repository = JsonBusinessRepository.from_paths(
+        [
+            _BUSINESS_PATH,
+            stub_root / "TEST_F16_STUB.business.json",
+        ]
+    )
     processor = GovernmentAgentTurnProcessor(
-        decision_graph=graph,
+        decision_graph=demo_graph,
+        matter_registry=registry,
         business_repository=repository,
         retrieval_service=TwoCandidates(),  # type: ignore[arg-type]
         slot_dependencies=SlotInteractionDependencies(
             answer_mapper=ScriptedMapper([]),
             explanation_service=ScriptedExplanation(),
-            decision_graph=graph,
+            decision_graph=demo_graph,
             business_repository=repository,
         ),
         terminal_dependencies=TerminalConfirmationDependencies(
             business_repository=repository,
         ),
+        load_default_guide=False,
     )
-    pending = _turn(processor, "我想办社保", None).state
-    result = _turn(processor, "需要什么材料？", pending)
+    result = _turn(processor, "我想办业务", None)
     assert "身份证" not in result.response_text
+    assert "测试夹具材料A" not in result.response_text
     assert "多项可能的业务" in result.response_text
+    assert result.state["artifacts"].get("f09") in (None, {})
+    f12 = result.state["artifacts"]["f12"]
+    assert f12["knowledge_context_unique"] is False
+    assert f12.get("bound_business_id") in (None, "")
 
 
 def test_early_unique_context_answers_guide_without_advancing() -> None:

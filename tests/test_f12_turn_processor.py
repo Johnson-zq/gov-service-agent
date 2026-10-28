@@ -294,23 +294,22 @@ def test_pending_slot_reuses_f09_and_advances_one_graph_step(
     mapper = ScriptedMapper([_slot_answer("payment")])
     processor = _build(retrieval, mapper)
     pending = _pending_service_action(processor, retrieval)
-    import gov_service_agent.agent.nodes as nodes
+    import gov_service_agent.agent.turn_processor as turn_mod
 
     calls = {"n": 0}
-    real = nodes.advance_until_blocked
+    real = turn_mod.advance_until_blocked
 
     def _spy(graph, node_id, slots):  # type: ignore[no-untyped-def]
         calls["n"] += 1
         return real(graph, node_id, slots)
 
-    monkeypatch.setattr(nodes, "advance_until_blocked", _spy)
+    monkeypatch.setattr(turn_mod, "advance_until_blocked", _spy)
+    # Explicit DEMO phrase is absorbed deterministically (no mapper).
     result = _turn(processor, "社保缴费", pending)
     f09 = _f09(result.state)
     assert len(retrieval.queries) == 1
-    assert len(mapper.requests) == 1
+    assert len(mapper.requests) == 0
     assert calls["n"] == 1
-    assert f09["validated_slot"]["slot_name"] == "service_action"
-    assert f09["validated_slot"]["value"] == "payment"
     assert f09["business_transition"]["current_node_id"] == "payment_actor"
     assert f09["business_transition"]["required_slot"] == "payment_actor"
     assert f09["slot_context"]["current_node_id"] == "payment_actor"
@@ -351,10 +350,9 @@ def test_explanation_side_route_keeps_pending_employment_type() -> None:
 
 def test_low_confidence_does_not_advance_graph() -> None:
     retrieval = FakeRetrieval(_candidates_result())
+    # payment / self_payment phrases are deterministic; only employment needs mapper.
     mapper = ScriptedMapper(
         [
-            _slot_answer("payment"),
-            _slot_answer("self_payment"),
             _slot_answer("other_flexible_employment", 0.75),
         ]
     )
@@ -378,7 +376,7 @@ def test_low_confidence_does_not_advance_graph() -> None:
     }
     assert "employment_type" not in f09["slot_context"]["current_slots"]
     assert _EMPLOYMENT_QUESTION in result.response_text
-    assert len(mapper.requests) == 3
+    assert len(mapper.requests) == 1
     assert len(retrieval.queries) == 1
     assert "f10" not in result.state["artifacts"]
     assert result.requires_user_input is True
@@ -386,13 +384,8 @@ def test_low_confidence_does_not_advance_graph() -> None:
 
 def test_golden_flow_prepares_then_confirms_on_a_later_turn() -> None:
     retrieval = FakeRetrieval(_candidates_result())
-    mapper = ScriptedMapper(
-        [
-            _slot_answer("payment"),
-            _slot_answer("self_payment"),
-            _slot_answer("self_employed_without_employees", 0.91),
-        ]
-    )
+    # Slot phrases are deterministic; mapper stays unused for this golden path.
+    mapper = ScriptedMapper([])
     processor = _build(retrieval, mapper)
     first = _turn(processor, _INITIAL, None)
     assert first.requires_user_input is True
@@ -416,7 +409,7 @@ def test_golden_flow_prepares_then_confirms_on_a_later_turn() -> None:
     assert fourth.public_status is SessionTurnPublicStatus.AWAITING_USER_INPUT
     assert fourth.requires_user_input is True
     assert len(retrieval.queries) == 1
-    assert len(mapper.requests) == 3
+    assert len(mapper.requests) == 0
 
     fifth = _turn(processor, "确认", fourth.state)
     confirmed = read_f10(fifth.state["artifacts"])
@@ -427,7 +420,7 @@ def test_golden_flow_prepares_then_confirms_on_a_later_turn() -> None:
     assert fifth.requires_user_input is False
     assert "已确认您要办理的事项" in fifth.response_text
     assert len(retrieval.queries) == 1
-    assert len(mapper.requests) == 3
+    assert len(mapper.requests) == 0
 
 
 def test_terminal_confirmation_outranks_stale_slot_context() -> None:
@@ -524,7 +517,12 @@ def test_fallback_and_unsupported_stay_without_retrieval(
     assert transition["candidate_business_id"] is None
     assert "f10" not in held.state["artifacts"]
     assert expected_fragment in held.response_text
-    assert held.requires_user_input is True
+    # UNSUPPORTED ends the online path (no “等待补充”); FALLBACK still awaits.
+    if transition["status"] == TransitionStatus.UNSUPPORTED.value:
+        assert held.requires_user_input is False
+        assert held.public_status is SessionTurnPublicStatus.COMPLETED
+    else:
+        assert held.requires_user_input is True
     assert len(retrieval.queries) == 1
     assert len(mapper.requests) == 1
     again = _turn(processor, "换个说法", held.state)
@@ -538,6 +536,7 @@ def test_mapper_exception_propagates_without_success_result() -> None:
     mapper = ScriptedMapper([RuntimeError("controlled mapper failure")])
     processor = _build(retrieval, mapper)
     pending = _pending_service_action(processor, retrieval)
+    # Avoid deterministic DEMO phrases so the mapper path is exercised.
     with pytest.raises(RuntimeError, match="controlled mapper failure"):
-        _turn(processor, "缴费", pending)
+        _turn(processor, "就那个把钱交上的事儿", pending)
     assert len(mapper.requests) == 1

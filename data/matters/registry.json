@@ -1,0 +1,17 @@
+{
+  "schema_version": "1",
+  "matters": [
+    {
+      "business_id": "DEMO_SS_001",
+      "business_data_source": "data/demo/demo_ss_001.json",
+      "decision_graph_source": "data/graphs/demo/social_security.json",
+      "guide_source": "data/guides/DEMO_SS_001.guide.json"
+    },
+    {
+      "business_id": "IDCARD_RC_LT5Y",
+      "business_data_source": "data/demo/idcard_rc_lt5y.json",
+      "decision_graph_source": "data/graphs/demo/idcard_replace_lt5y.json",
+      "guide_source": "data/guides/IDCARD_RC_LT5Y.guide.json"
+    }
+  ]
+}

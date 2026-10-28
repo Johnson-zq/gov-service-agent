@@ -6,6 +6,11 @@
       "business_id": "DEMO_SS_001",
       "decision": "ALLOW",
       "reason": "current_demo_online_scope"
+    },
+    {
+      "business_id": "IDCARD_RC_LT5Y",
+      "decision": "ALLOW",
+      "reason": "f16_idcard_replace_lt5y_online_scope"
     }
   ]
 }

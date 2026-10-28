@@ -1,0 +1,388 @@
+{
+  "schema_version": "1",
+  "business_id": "IDCARD_RC_LT5Y",
+  "source": {
+    "source_id": "src-idcard-rc-lt5y",
+    "source_title": "居民身份证换补领（领证未满五年）",
+    "source_type": "OFFICIAL_GUIDE",
+    "source_file": "居民身份证换补领（领证未满五年）.txt",
+    "source_section": null,
+    "effective_date": null,
+    "source_version": null,
+    "ingested_at": null,
+    "ingested_by": null
+  },
+  "source_sections": [
+    {
+      "section_id": "sec-scope",
+      "title": "一、适用范围",
+      "text": "服务对象：个人"
+    },
+    {
+      "section_id": "sec-law-national",
+      "title": "二、国家法律依据",
+      "text": "公安部关于印发《户口居民身份证管理工作规范(试行)》的通知 公安部 2021-07-24 第五条。中华人民共和国居民身份证法（2011修正）第二条、第十一条、第十二条、第二十一条。第十一条含：居民身份证丢失的，应当申请补领。第十二条：公安机关应当自公民提交《居民身份证申领登记表》之日起六十日内发放居民身份证；交通不便的地区，办理时间可以适当延长，但延长的时间不得超过三十日。第二十一条：公民申请领取、换领、补领居民身份证，应当缴纳证件工本费。"
+    },
+    {
+      "section_id": "sec-law-other",
+      "title": "三至五、省级、市级法律依据与县级规定",
+      "text": "省级法律依据：无。市级法律依据：无。县级规定：无。"
+    },
+    {
+      "section_id": "sec-authority",
+      "title": "六、实施主体",
+      "text": "区公安分局"
+    },
+    {
+      "section_id": "sec-notice",
+      "title": "七、特别提示",
+      "text": "禁止性要求：有下列情形之一，应当通过线下窗口申请办理：（一）不符合适用对象条件的；（二）提交的现场照片非申请人本人，或者相貌特征发生较大变化的；（三）有不良信用记录的。数量限制：无数量限制。"
+    },
+    {
+      "section_id": "sec-conditions",
+      "title": "八、申报条件",
+      "text": "信息要求：证件的相片、指纹信息采集时间未满5年，且信息有效的。证件要求：证件有效期为10年及以上的。办理情形：证件丢失、损坏需补领的。户口登记住址：户口登记在浙江省。"
+    },
+    {
+      "section_id": "sec-materials",
+      "title": "九、申请材料",
+      "text": "自备材料：申请人现场正面照片；材料形式：电子材料；必要性：是；备注：必须现场拍摄。该照片不作为证件制作照片使用。可共享材料：栏目未记载具体材料。"
+    },
+    {
+      "section_id": "sec-owner-confirm",
+      "title": "Owner业务规则确认（非指南原文）",
+      "text": "Owner确认（非办事指南原文）：申请材料中的现场正面照片必须现场拍摄，该照片不是身份证制作照片；完成现场照片采集后，可以使用该照片资料在线发起申请。现场拍摄要求不等于整个申请必须线下办理。指南特别提示所列三类须线下窗口办理的情形仍然适用。申报条件之间为 AND 关系。"
+    },
+    {
+      "section_id": "sec-process",
+      "title": "十、办理流程",
+      "text": "申请：向公安派出所提出申请。受理：即办（24小时内）；窗口人员；是否符合受理条件；符合条件，进行受理，并发起互联网缴费流程；对于不符合条件的，应当说明理由，告知申领人到线下窗口核实办理。审查/核：非即办（5工作日）；县级公安机关户籍管理部门民警；人像质量、人像一致性、缴费等问题；签发证件。办结：非即办（5工作日）；省厅居民身份证制作中心；审核数据质量；制作证件。送达：邮寄至申请人。"
+    },
+    {
+      "section_id": "sec-flowchart",
+      "title": "十一、办理流程图",
+      "text": "办理流程图栏目下未记载图示或步骤文字。"
+    },
+    {
+      "section_id": "sec-deadline",
+      "title": "十二、办结时限",
+      "text": "承诺办结期限：10工作日。时限说明：法定期限：60日内发放居民身份证；交通不便的地区，可以延长的时间不得超过30日；承诺期限：省内户籍快递证件10工作日内投递；非快递证件30日内发放居民身份证；交通不便的地区，可以延长的时间不得超过10日。"
+    },
+    {
+      "section_id": "sec-fees",
+      "title": "十三、收费依据及标准",
+      "text": "收费项目名称：居民身份证丢失补领、损坏换领；收费标准：40元/证；减免说明：未记载。"
+    },
+    {
+      "section_id": "sec-result",
+      "title": "十四、审批结果名称",
+      "text": "办结结果名称：证照。办结结果类型：居民身份证。"
+    },
+    {
+      "section_id": "sec-consult",
+      "title": "十五、咨询方式",
+      "text": "咨询电话：0571-86773019、0571-87283256。咨询地址：候潮东路175号9楼户籍办公室。"
+    },
+    {
+      "section_id": "sec-complaint",
+      "title": "十六、投诉方式",
+      "text": "投诉电话：全国统一咨询投诉热线0571-12345。投诉地址：候潮东路175号9楼901室。"
+    },
+    {
+      "section_id": "sec-location",
+      "title": "十七、受理地点和时间",
+      "text": "受理地点：清波派出所（杭州市上城区清波街道四宜路61号）一楼政务服务大厅1-3号窗口；湖滨派出所（杭州市上城区邮电路22号）一楼政务服务大厅1-3号窗口；小营派出所（杭州市上城区翰林街107号）一楼政务服务大厅1-3号窗口；南星派出所（杭州市上城区洋泮路85号）一楼政务服务大厅1-3号窗口；紫阳派出所（杭州市上城区南瓦坊3幢）一楼政务服务大厅1-3号窗口；望江派出所（杭州市上城区映霞街170号）二楼政务服务大厅1-3号窗口；凯旋派出所（杭州市上城区凯旋街道秋涛北路89号）一楼政务服务大厅1-3号窗口；采荷派出所（杭州市上城区采荷街道凯旋路33-3号）一楼政务服务大厅1-3号窗口；闸弄口派出所（杭州市上城区彭埠街道天城路58号闸弄口派出所）一楼政务服务大厅1-3号窗口；四季青派出所（杭州市上城区四季青街道景御路173号）一楼政务服务大厅1-3号窗口；彭埠派出所（杭州市上城区彭埠街道艮山东路295号）一楼政务服务大厅1-3号窗口；笕桥派出所（杭州市上城区笕桥街道机场路230号）一楼政务服务大厅1-3号窗口；丁兰派出所（杭州市上城区丁兰街道环丁路1447号）一楼政务服务大厅1-3号窗口；九堡派出所（杭州市上城区九堡街道九沙大道209号）一楼政务服务大厅1-3号窗口。受理接待时间通例：周一至周六夏季上午8:30-11:30、下午14:00-17:00；春秋冬季上午8:30-11:30、下午13:30-17:00（法定节假日按国家假期安排调整）。上述均为指南列明受理点，不是仅两家。"
+    },
+    {
+      "section_id": "sec-onsite",
+      "title": "十八、办事者到办事现场次数",
+      "text": "办事者到办事现场次数：0次。必须现场办理原因说明：未填写。"
+    },
+    {
+      "section_id": "sec-faq-onsite",
+      "title": "十九、常见问题 1",
+      "text": "问题：是否需要到现场。解答：居民身份证丢失、损坏补领（领证未满五年）全程网办，无需到现场。"
+    }
+  ],
+  "knowledge_items": [
+    {
+      "item_id": "ki-scope",
+      "topic": "applicant_scope",
+      "subtopic": null,
+      "value": {
+        "kind": "text",
+        "text": "服务对象：个人。申报条件包括：相片、指纹信息采集时间未满5年且信息有效；证件有效期为10年及以上；办理情形为证件丢失、损坏需补领；户口登记在浙江省。"
+      },
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-idcard-rc-lt5y",
+      "section_id": "sec-conditions",
+      "excerpt": "证件的相片、指纹信息采集时间未满5年，且信息有效的"
+    },
+    {
+      "item_id": "ki-legal",
+      "topic": "legal_basis",
+      "subtopic": null,
+      "value": {
+        "kind": "text",
+        "text": "国家法律依据含《中华人民共和国居民身份证法（2011修正）》第二条、第十一条、第十二条、第二十一条，以及公安部《户口居民身份证管理工作规范(试行)》相关条款。省级、市级法律依据和县级规定均为无。"
+      },
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-idcard-rc-lt5y",
+      "section_id": "sec-law-national",
+      "excerpt": "居民身份证丢失的，应当申请补领。"
+    },
+    {
+      "item_id": "ki-authority",
+      "topic": "implementing_authority",
+      "subtopic": null,
+      "value": {"kind": "text", "text": "实施主体：区公安分局。"},
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-idcard-rc-lt5y",
+      "section_id": "sec-authority",
+      "excerpt": "区公安分局"
+    },
+    {
+      "item_id": "ki-notice",
+      "topic": "special_notice",
+      "subtopic": null,
+      "value": {
+        "kind": "text",
+        "text": "禁止性要求：有下列情形之一，应当通过线下窗口申请办理：（一）不符合适用对象条件的；（二）提交的现场照片非申请人本人，或者相貌特征发生较大变化的；（三）有不良信用记录的。数量限制：无数量限制。"
+      },
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-idcard-rc-lt5y",
+      "section_id": "sec-notice",
+      "excerpt": "有下列情形之一，应当通过线下窗口申请办理"
+    },
+    {
+      "item_id": "ki-materials",
+      "topic": "materials",
+      "subtopic": null,
+      "value": {
+        "kind": "text",
+        "text": "自备材料：申请人现场正面照片（电子材料，必须现场拍摄；该照片不作为证件制作照片使用）。可共享材料栏目未记载具体材料。"
+      },
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-idcard-rc-lt5y",
+      "section_id": "sec-materials",
+      "excerpt": "申请人现场正面照片"
+    },
+    {
+      "item_id": "ki-materials-photo-vs-offline",
+      "topic": "materials",
+      "subtopic": "field_photo_online",
+      "value": {
+        "kind": "text",
+        "text": "【Owner业务规则确认，非指南原文】现场正面照片须现场拍摄，且不是证件制作照片；完成采集后可使用该电子材料在线发起申请。现场拍摄要求不等于整个申请必须线下窗口办理。特别提示中的三类情形仍须线下窗口办理。"
+      },
+      "verification_status": "VERIFIED",
+      "source_id": "src-idcard-rc-lt5y",
+      "section_id": "sec-owner-confirm",
+      "excerpt": "现场拍摄要求不等于整个申请必须线下办理"
+    },
+    {
+      "item_id": "ki-process",
+      "topic": "process",
+      "subtopic": null,
+      "value": {
+        "kind": "list",
+        "items": [
+          "申请：向公安派出所提出申请。",
+          "受理：即办（24小时内）。符合条件则受理并发起互联网缴费流程；不符合条件应当说明理由，告知到线下窗口核实办理。",
+          "审查/核：非即办（5工作日），审核人像质量、人像一致性、缴费等问题并签发证件。",
+          "办结：非即办（5工作日），省厅居民身份证制作中心制作证件。",
+          "送达：邮寄至申请人。"
+        ]
+      },
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-idcard-rc-lt5y",
+      "section_id": "sec-process",
+      "excerpt": "符合条件，进行受理，并发起互联网缴费流程；对于不符合条件的，应当说明理由，告知申领人到线下窗口核实办理。"
+    },
+    {
+      "item_id": "ki-process-offline-redirect",
+      "topic": "process",
+      "subtopic": "out_of_scope",
+      "value": {
+        "kind": "text",
+        "text": "受理环节：对于不符合条件的，应当说明理由，告知申领人到线下窗口核实办理。特别提示另列三类须线下窗口办理的情形。"
+      },
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-idcard-rc-lt5y",
+      "section_id": "sec-process",
+      "excerpt": "告知申领人到线下窗口核实办理"
+    },
+    {
+      "item_id": "ki-flowchart",
+      "topic": "flow_chart",
+      "subtopic": null,
+      "value": {
+        "kind": "text",
+        "text": "办理流程图栏目下未记载图示或步骤文字。"
+      },
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-idcard-rc-lt5y",
+      "section_id": "sec-flowchart",
+      "excerpt": "办理流程图栏目下未记载图示或步骤文字。"
+    },
+    {
+      "item_id": "ki-deadline",
+      "topic": "completion_time",
+      "subtopic": null,
+      "value": {
+        "kind": "text",
+        "text": "承诺办结期限：10工作日。法定期限：60日内发放居民身份证；交通不便地区延长不得超过30日。承诺期限另载：省内户籍快递证件10工作日内投递；非快递证件30日内发放；交通不便地区延长不得超过10日。受理即办（24小时内）不等于整体当天办结。"
+      },
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-idcard-rc-lt5y",
+      "section_id": "sec-deadline",
+      "excerpt": "承诺办结期限：10工作日"
+    },
+    {
+      "item_id": "ki-fees",
+      "topic": "fees",
+      "subtopic": null,
+      "value": {
+        "kind": "text",
+        "text": "收费项目：居民身份证丢失补领、损坏换领；收费标准：40元/证。减免说明未记载，不能据此判断存在减免或免费。"
+      },
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-idcard-rc-lt5y",
+      "section_id": "sec-fees",
+      "excerpt": "居民身份证丢失补领、损坏换领 40元/证"
+    },
+    {
+      "item_id": "ki-result",
+      "topic": "result",
+      "subtopic": null,
+      "value": {
+        "kind": "text",
+        "text": "办结结果名称：证照。办结结果类型：居民身份证。"
+      },
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-idcard-rc-lt5y",
+      "section_id": "sec-result",
+      "excerpt": "办结结果类型：居民身份证"
+    },
+    {
+      "item_id": "ki-consult",
+      "topic": "consultation",
+      "subtopic": null,
+      "value": {
+        "kind": "text",
+        "text": "咨询电话：0571-86773019、0571-87283256。咨询地址：候潮东路175号9楼户籍办公室。"
+      },
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-idcard-rc-lt5y",
+      "section_id": "sec-consult",
+      "excerpt": "咨询电话：0571-86773019、0571-87283256"
+    },
+    {
+      "item_id": "ki-complaint",
+      "topic": "complaints",
+      "subtopic": null,
+      "value": {
+        "kind": "text",
+        "text": "投诉电话：全国统一咨询投诉热线0571-12345。投诉地址：候潮东路175号9楼901室。"
+      },
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-idcard-rc-lt5y",
+      "section_id": "sec-complaint",
+      "excerpt": "投诉电话：全国统一咨询投诉热线0571-12345"
+    },
+    {
+      "item_id": "ki-locations",
+      "topic": "handling_locations",
+      "subtopic": null,
+      "value": {
+        "kind": "list",
+        "items": [
+          "清波派出所：杭州市上城区清波街道四宜路61号一楼政务服务大厅1-3号窗口",
+          "湖滨派出所：杭州市上城区邮电路22号一楼政务服务大厅1-3号窗口",
+          "小营派出所：杭州市上城区翰林街107号一楼政务服务大厅1-3号窗口",
+          "南星派出所：杭州市上城区洋泮路85号一楼政务服务大厅1-3号窗口",
+          "紫阳派出所：杭州市上城区南瓦坊3幢一楼政务服务大厅1-3号窗口",
+          "望江派出所：杭州市上城区映霞街170号二楼政务服务大厅1-3号窗口",
+          "凯旋派出所：杭州市上城区凯旋街道秋涛北路89号一楼政务服务大厅1-3号窗口",
+          "采荷派出所：杭州市上城区采荷街道凯旋路33-3号一楼政务服务大厅1-3号窗口",
+          "闸弄口派出所：杭州市上城区彭埠街道天城路58号闸弄口派出所一楼政务服务大厅1-3号窗口",
+          "四季青派出所：杭州市上城区四季青街道景御路173号一楼政务服务大厅1-3号窗口",
+          "彭埠派出所：杭州市上城区彭埠街道艮山东路295号一楼政务服务大厅1-3号窗口",
+          "笕桥派出所：杭州市上城区笕桥街道机场路230号一楼政务服务大厅1-3号窗口",
+          "丁兰派出所：杭州市上城区丁兰街道环丁路1447号一楼政务服务大厅1-3号窗口",
+          "九堡派出所：杭州市上城区九堡街道九沙大道209号一楼政务服务大厅1-3号窗口",
+          "以上均为指南列明的受理点，请就近选择户口所在地对应派出所，不是仅清波、湖滨两家。"
+        ]
+      },
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-idcard-rc-lt5y",
+      "section_id": "sec-location",
+      "excerpt": "受理地点：清波派出所（杭州市上城区清波街道四宜路61号）"
+    },
+    {
+      "item_id": "ki-handling-time",
+      "topic": "handling_time",
+      "subtopic": null,
+      "value": {
+        "kind": "text",
+        "text": "多数派出所受理接待时间：周一至周六；夏季上午8:30-11:30、下午14:00-17:00；春秋冬季上午8:30-11:30、下午13:30-17:00；法定节假日按国家假期安排调整。"
+      },
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-idcard-rc-lt5y",
+      "section_id": "sec-location",
+      "excerpt": "受理接待时间：周一至周六夏季：上午8:30-11:30，下午：14:00-17:00"
+    },
+    {
+      "item_id": "ki-onsite",
+      "topic": "on_site_requirement",
+      "subtopic": null,
+      "value": {
+        "kind": "text",
+        "text": "办事者到办事现场次数：0次。常见问题另载：丢失、损坏补领（领证未满五年）全程网办，无需到现场。特别提示中的三类情形仍须线下窗口办理，不与“0次”相互覆盖。"
+      },
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-idcard-rc-lt5y",
+      "section_id": "sec-onsite",
+      "excerpt": "办事者到办事现场次数：0次"
+    },
+    {
+      "item_id": "ki-onsite-field-photo",
+      "topic": "on_site_requirement",
+      "subtopic": "field_photo",
+      "value": {
+        "kind": "text",
+        "text": "【Owner业务规则确认，非指南原文】“全程网办/到现场0次”不否定申请材料所需的现场正面照片采集；采集完成后可在线发起申请。该要求不等于整项必须线下窗口办理；三类法定线下例外仍适用。"
+      },
+      "verification_status": "VERIFIED",
+      "source_id": "src-idcard-rc-lt5y",
+      "section_id": "sec-owner-confirm",
+      "excerpt": "完成现场照片采集后，可以使用该照片资料在线发起申请"
+    },
+    {
+      "item_id": "ki-faq-onsite",
+      "topic": "faq",
+      "subtopic": "onsite",
+      "value": {
+        "kind": "text",
+        "text": "是否需要到现场：居民身份证丢失、损坏补领（领证未满五年）全程网办，无需到现场。"
+      },
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-idcard-rc-lt5y",
+      "section_id": "sec-faq-onsite",
+      "excerpt": "居民身份证丢失、损坏补领（领证未满五年）全程网办，无需到现场。"
+    },
+    {
+      "item_id": "ki-channels",
+      "topic": "channels",
+      "subtopic": null,
+      "value": {
+        "kind": "text",
+        "text": "常见问题记载：丢失、损坏补领（领证未满五年）全程网办。指南未记载具体页面点击步骤。"
+      },
+      "verification_status": "SOURCE_EXPLICIT",
+      "source_id": "src-idcard-rc-lt5y",
+      "section_id": "sec-faq-onsite",
+      "excerpt": "全程网办，无需到现场"
+    }
+  ]
+}

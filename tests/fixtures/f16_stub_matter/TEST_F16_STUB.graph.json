@@ -1,0 +1,42 @@
+{
+  "schema_version": "1",
+  "graph_id": "test_f16_stub",
+  "graph_version": 1,
+  "data_scope": "DEMO",
+  "entry_node_id": "stub_entry",
+  "nodes": [
+    {
+      "node_id": "stub_entry",
+      "node_type": "ENTRY",
+      "design_basis": "TEST_ONLY",
+      "slot_name": null,
+      "allowed_values": null,
+      "question_text": null,
+      "candidate_business_id": null,
+      "unsupported_reason": null,
+      "source_condition_refs": null
+    },
+    {
+      "node_id": "terminal_test_f16_stub",
+      "node_type": "TERMINAL_CANDIDATE",
+      "design_basis": "TEST_ONLY",
+      "slot_name": null,
+      "allowed_values": null,
+      "question_text": null,
+      "candidate_business_id": "TEST_F16_STUB",
+      "unsupported_reason": null,
+      "source_condition_refs": null
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "e-stub-entry-terminal",
+      "from_node_id": "stub_entry",
+      "to_node_id": "terminal_test_f16_stub",
+      "edge_kind": "ENTRY_FORWARD",
+      "design_basis": "TEST_ONLY",
+      "match": null,
+      "source_condition_refs": null
+    }
+  ]
+}

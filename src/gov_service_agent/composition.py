@@ -18,8 +18,8 @@ from gov_service_agent.agent.workflow import (
     TerminalConfirmationDependencies,
 )
 from gov_service_agent.business_data.repository import JsonBusinessRepository
-from gov_service_agent.business_graph.loader import load_decision_graph
 from gov_service_agent.llm.provider import build_llm_provider
+from gov_service_agent.matters.registry import load_matter_registry
 from gov_service_agent.retrieval.service import SemanticRetrievalService
 from gov_service_agent.session.api import create_session_router
 from gov_service_agent.session.service import SessionTurnService
@@ -27,16 +27,22 @@ from gov_service_agent.session.store import RedisSessionConfig, RedisSessionStor
 from gov_service_agent.settings import Settings, get_settings
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_DEMO_GRAPH_PATH = _REPO_ROOT / "data" / "graphs" / "demo" / "social_security.json"
-_DEMO_BUSINESS_PATH = _REPO_ROOT / "data" / "demo" / "demo_ss_001.json"
+_MATTER_REGISTRY_PATH = _REPO_ROOT / "data" / "matters" / "registry.json"
 
 
 def build_session_router(settings: Settings | None = None) -> APIRouter:
     """Assemble Production Session router with GovernmentAgentTurnProcessor."""
     resolved = settings if settings is not None else get_settings()
 
-    decision_graph = load_decision_graph(_DEMO_GRAPH_PATH)
-    business_repository = JsonBusinessRepository.from_paths([_DEMO_BUSINESS_PATH])
+    matter_registry = load_matter_registry(
+        _MATTER_REGISTRY_PATH,
+        repo_root=_REPO_ROOT,
+    )
+    business_paths = matter_registry.business_data_paths()
+    if not business_paths:
+        raise RuntimeError("matter registry has no business_data_source paths")
+    business_repository = JsonBusinessRepository.from_paths(business_paths)
+    decision_graph = matter_registry.default_graph()
 
     llm_provider = build_llm_provider(resolved)
     slot_dependencies = SlotInteractionDependencies(
@@ -51,6 +57,7 @@ def build_session_router(settings: Settings | None = None) -> APIRouter:
     retrieval_service = SemanticRetrievalService(settings=resolved)
     base_processor = GovernmentAgentTurnProcessor(
         decision_graph=decision_graph,
+        matter_registry=matter_registry,
         business_repository=business_repository,
         retrieval_service=retrieval_service,
         slot_dependencies=slot_dependencies,

@@ -394,7 +394,8 @@ def test_confirmed_guide_query_keeps_confirmation_and_skips_f13_repeat() -> None
     assert later.public_status is SessionTurnPublicStatus.COMPLETED
     assert read_f10(later.state["artifacts"])["confirmed_business_id"] == "DEMO_SS_001"
     assert len(retrieval.queries) == 1
-    assert len(mapper.requests) == 3
+    # DEMO slot phrases are absorbed deterministically; mapper may stay unused.
+    assert len(mapper.requests) == 0
 
 
 def test_existing_explanation_still_runs() -> None:

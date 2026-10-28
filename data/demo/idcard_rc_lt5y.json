@@ -1,0 +1,444 @@
+{
+  "schema_version": "1",
+  "business": {
+    "business_id": "IDCARD_RC_LT5Y",
+    "canonical_name": "居民身份证换补领（领证未满五年）",
+    "category": "public_security_id_card",
+    "data_scope": "DEMO",
+    "data_version": 1,
+    "status": "ACTIVE",
+    "primary_source_id": "src-idcard-rc-lt5y",
+    "updated_at": "2026-10-27T14:00:00+08:00",
+    "service_target": "个人",
+    "implementing_authority": "区公安分局",
+    "on_site_visits": "0次",
+    "quantity_limit": "无数量限制",
+    "prohibition": "有下列情形之一，应当通过线下窗口申请办理：（一）不符合适用对象条件的；（二）提交的现场照片非申请人本人，或者相貌特征发生较大变化的；（三）有不良信用记录的。",
+    "metadata_source_id": "src-idcard-rc-lt5y",
+    "metadata_source_status": "SOURCE_EXPLICIT"
+  },
+  "sources": [
+    {
+      "source_id": "src-idcard-rc-lt5y",
+      "source_title": "居民身份证换补领（领证未满五年）",
+      "source_type": "OFFICIAL_GUIDE",
+      "source_file": "居民身份证换补领（领证未满五年）.txt",
+      "source_section": null,
+      "effective_date": null,
+      "source_version": null,
+      "ingested_at": null,
+      "ingested_by": null
+    },
+    {
+      "source_id": "src-idcard-owner-confirm-f16-2",
+      "source_title": "Owner业务规则确认（F16-2，非指南原文）",
+      "source_type": "MANUAL_CONFIRMATION",
+      "source_file": null,
+      "source_section": "条件组合AND；现场正面照片与线下分流区分",
+      "effective_date": "2026-10-27",
+      "source_version": null,
+      "ingested_at": null,
+      "ingested_by": "owner"
+    }
+  ],
+  "materials": [
+    {
+      "material_id": "mat-onsite-front-photo",
+      "evidence": {
+        "source_id": "src-idcard-rc-lt5y",
+        "source_section": "申请材料",
+        "source_excerpt": "申请人现场正面照片"
+      },
+      "source_text": "申请人现场正面照片（电子材料；必须现场拍摄；该照片不作为证件制作照片使用）",
+      "source_status": "SOURCE_EXPLICIT",
+      "requirement_level": "REQUIRED",
+      "requirement_level_status": "SOURCE_EXPLICIT",
+      "derivation_note": "Owner确认（依据 src-idcard-owner-confirm-f16-2，非指南原文）：该现场正面照片须现场拍摄且不作证件制作照片；完成采集后可用该电子材料在线发起申请。现场拍摄要求不等于整项申请必须线下窗口办理；三类法定线下例外仍适用。"
+    }
+  ],
+  "handling_locations": [
+    {
+      "location_id": "loc-qingbo",
+      "evidence": {"source_id": "src-idcard-rc-lt5y", "source_section": "受理地点", "source_excerpt": "受理地点：清波派出所（杭州市上城区清波街道四宜路61号）"},
+      "name": "清波派出所",
+      "name_status": "SOURCE_EXPLICIT",
+      "address": "杭州市上城区清波街道四宜路61号一楼政务服务大厅1-3号窗口",
+      "address_status": "SOURCE_EXPLICIT",
+      "service_hours": {"raw_text": "周一至周六夏季：上午8:30-11:30，下午14:00-17:00；春秋冬季：上午8:30-11:30，下午13:30-17:00（法定节假日按国家假期安排调整办理时间）", "source_status": "SOURCE_EXPLICIT"},
+      "floor": "一楼",
+      "window": "1-3号窗口",
+      "location_detail_status": "CONFIRMED"
+    },
+    {
+      "location_id": "loc-hubin",
+      "evidence": {"source_id": "src-idcard-rc-lt5y", "source_section": "受理地点", "source_excerpt": "受理地点：湖滨派出所（杭州市上城区邮电路22号）"},
+      "name": "湖滨派出所",
+      "name_status": "SOURCE_EXPLICIT",
+      "address": "杭州市上城区邮电路22号一楼政务服务大厅1-3号窗口",
+      "address_status": "SOURCE_EXPLICIT",
+      "service_hours": {"raw_text": "周一至周六夏季：上午8:30-11:30，下午14:00-17:00；春秋冬季：上午8:30-11:30，下午13:30-17:00（法定节假日按国家假期安排调整办理时间）", "source_status": "SOURCE_EXPLICIT"},
+      "floor": "一楼",
+      "window": "1-3号窗口",
+      "location_detail_status": "CONFIRMED"
+    },
+    {
+      "location_id": "loc-xiaoying",
+      "evidence": {"source_id": "src-idcard-rc-lt5y", "source_section": "受理地点", "source_excerpt": "受理地点：小营派出所（杭州市上城区翰林街107号）"},
+      "name": "小营派出所",
+      "name_status": "SOURCE_EXPLICIT",
+      "address": "杭州市上城区翰林街107号一楼政务服务大厅1-3号窗口",
+      "address_status": "SOURCE_EXPLICIT",
+      "service_hours": {"raw_text": "周一至周六夏季：上午8:30-11:30，下午14:00-17:00；春秋冬季：上午8:30-11:30，下午13:30-17:00（法定节假日按国家假期安排调整办理时间）", "source_status": "SOURCE_EXPLICIT"},
+      "floor": "一楼",
+      "window": "1-3号窗口",
+      "location_detail_status": "CONFIRMED"
+    },
+    {
+      "location_id": "loc-nanxing",
+      "evidence": {"source_id": "src-idcard-rc-lt5y", "source_section": "受理地点", "source_excerpt": "受理地点：南星派出所（杭州市上城区洋泮路85号）"},
+      "name": "南星派出所",
+      "name_status": "SOURCE_EXPLICIT",
+      "address": "杭州市上城区洋泮路85号一楼政务服务大厅1-3号窗口",
+      "address_status": "SOURCE_EXPLICIT",
+      "service_hours": {"raw_text": "周一至周六夏季：上午8:30-11:30，下午14:00-17:00；春秋冬季：上午8:30-11:30，下午13:30-17:00（法定节假日按国家假期安排调整办理时间）", "source_status": "SOURCE_EXPLICIT"},
+      "floor": "一楼",
+      "window": "1-3号窗口",
+      "location_detail_status": "CONFIRMED"
+    },
+    {
+      "location_id": "loc-ziyang",
+      "evidence": {"source_id": "src-idcard-rc-lt5y", "source_section": "受理地点", "source_excerpt": "受理地点：紫阳派出所（杭州市上城区南瓦坊3幢）"},
+      "name": "紫阳派出所",
+      "name_status": "SOURCE_EXPLICIT",
+      "address": "杭州市上城区南瓦坊3幢一楼政务服务大厅1-3号窗口",
+      "address_status": "SOURCE_EXPLICIT",
+      "service_hours": {"raw_text": "周一至周六夏季：上午8:30-11:30，下午14:00-17:00；春秋冬季：上午8:30-11:30，下午13:30-17:00（法定节假日按国家假期安排调整办理时间）", "source_status": "SOURCE_EXPLICIT"},
+      "floor": "一楼",
+      "window": "1-3号窗口",
+      "location_detail_status": "CONFIRMED"
+    },
+    {
+      "location_id": "loc-wangjiang",
+      "evidence": {"source_id": "src-idcard-rc-lt5y", "source_section": "受理地点", "source_excerpt": "受理地点：望江派出所（杭州市上城区映霞街170号）"},
+      "name": "望江派出所",
+      "name_status": "SOURCE_EXPLICIT",
+      "address": "杭州市上城区映霞街170号二楼政务服务大厅1-3号窗口",
+      "address_status": "SOURCE_EXPLICIT",
+      "service_hours": {"raw_text": "周一至周六夏季：上午8:30-11:30，下午14:00-17:00；春秋冬季：上午8:30-11:30，下午13:30-17:00（法定节假日按国家假期安排调整办理时间）", "source_status": "SOURCE_EXPLICIT"},
+      "floor": "二楼",
+      "window": "1-3号窗口",
+      "location_detail_status": "CONFIRMED"
+    },
+    {
+      "location_id": "loc-kaixuan",
+      "evidence": {"source_id": "src-idcard-rc-lt5y", "source_section": "受理地点", "source_excerpt": "受理地点：杭州市公安局上城区分局凯旋派出所（杭州市上城区凯旋街道秋涛北路89号）"},
+      "name": "凯旋派出所",
+      "name_status": "SOURCE_EXPLICIT",
+      "address": "杭州市上城区凯旋街道秋涛北路89号一楼政务服务大厅1-3号窗口",
+      "address_status": "SOURCE_EXPLICIT",
+      "service_hours": {"raw_text": "周一至周六夏季：上午8:30-11:30，下午14:00-17:00；春秋冬季：上午8:30-11:30，下午13:30-17:00（法定节假日按国家假期安排调整办理时间）", "source_status": "SOURCE_EXPLICIT"},
+      "floor": "一楼",
+      "window": "1-3号窗口",
+      "location_detail_status": "CONFIRMED"
+    },
+    {
+      "location_id": "loc-caihe",
+      "evidence": {"source_id": "src-idcard-rc-lt5y", "source_section": "受理地点", "source_excerpt": "受理地点：杭州市公安局上城区分局采荷派出所（杭州市上城区采荷街道凯旋路33-3号）"},
+      "name": "采荷派出所",
+      "name_status": "SOURCE_EXPLICIT",
+      "address": "杭州市上城区采荷街道凯旋路33-3号一楼政务服务大厅1-3号窗口",
+      "address_status": "SOURCE_EXPLICIT",
+      "service_hours": {"raw_text": "周一至周六夏季：上午8:30-11:30，下午14:00-17:00；春秋冬季：上午8:30-11:30，下午13:30-17:00（法定节假日按国家假期安排调整办理时间）", "source_status": "SOURCE_EXPLICIT"},
+      "floor": "一楼",
+      "window": "1-3号窗口",
+      "location_detail_status": "CONFIRMED"
+    },
+    {
+      "location_id": "loc-zhanongkou",
+      "evidence": {"source_id": "src-idcard-rc-lt5y", "source_section": "受理地点", "source_excerpt": "受理地点：杭州市公安局上城区分局闸弄口派出所（杭州市上城区彭埠街道天城路58号闸弄口派出所）"},
+      "name": "闸弄口派出所",
+      "name_status": "SOURCE_EXPLICIT",
+      "address": "杭州市上城区彭埠街道天城路58号闸弄口派出所一楼政务服务大厅1-3号窗口",
+      "address_status": "SOURCE_EXPLICIT",
+      "service_hours": {"raw_text": "周一至周六夏季：上午8:30-11:30，下午14:00-17:00；春秋冬季：上午8:30-11:30，下午13:30-17:00（法定节假日按国家假期安排调整办理时间）", "source_status": "SOURCE_EXPLICIT"},
+      "floor": "一楼",
+      "window": "1-3号窗口",
+      "location_detail_status": "CONFIRMED"
+    },
+    {
+      "location_id": "loc-sijijing",
+      "evidence": {"source_id": "src-idcard-rc-lt5y", "source_section": "受理地点", "source_excerpt": "受理地点：杭州市公安局上城区分局四季青派出所（杭州市上城区四季青街道景御路173号）"},
+      "name": "四季青派出所",
+      "name_status": "SOURCE_EXPLICIT",
+      "address": "杭州市上城区四季青街道景御路173号一楼政务服务大厅1-3号窗口",
+      "address_status": "SOURCE_EXPLICIT",
+      "service_hours": {"raw_text": "周一至周六夏季：上午8:30-11:30，下午14:00-17:00；春秋冬季：上午8:30-11:30，下午13:30-17:00（法定节假日按国家假期安排调整办理时间）", "source_status": "SOURCE_EXPLICIT"},
+      "floor": "一楼",
+      "window": "1-3号窗口",
+      "location_detail_status": "CONFIRMED"
+    },
+    {
+      "location_id": "loc-pengbu",
+      "evidence": {"source_id": "src-idcard-rc-lt5y", "source_section": "受理地点", "source_excerpt": "受理地点：杭州市公安局上城区分局彭埠派出所（杭州市上城区彭埠街道艮山东路295号）"},
+      "name": "彭埠派出所",
+      "name_status": "SOURCE_EXPLICIT",
+      "address": "杭州市上城区彭埠街道艮山东路295号一楼政务服务大厅1-3号窗口",
+      "address_status": "SOURCE_EXPLICIT",
+      "service_hours": {"raw_text": "周一至周六夏季：上午8:30-11:30，下午14:00-17:00；春秋冬季：上午8:30-11:30，下午13:30-17:00（法定节假日按国家假期安排调整办理时间）", "source_status": "SOURCE_EXPLICIT"},
+      "floor": "一楼",
+      "window": "1-3号窗口",
+      "location_detail_status": "CONFIRMED"
+    },
+    {
+      "location_id": "loc-jianqiao",
+      "evidence": {"source_id": "src-idcard-rc-lt5y", "source_section": "受理地点", "source_excerpt": "受理地点：杭州市公安局上城区分局笕桥派出所（杭州市上城区笕桥街道机场路230号）"},
+      "name": "笕桥派出所",
+      "name_status": "SOURCE_EXPLICIT",
+      "address": "杭州市上城区笕桥街道机场路230号一楼政务服务大厅1-3号窗口",
+      "address_status": "SOURCE_EXPLICIT",
+      "service_hours": {"raw_text": "周一至周六夏季：上午8:30-11:30，下午14:00-17:00；春秋冬季：上午8:30-11:30，下午13:30-17:00（法定节假日按国家假期安排调整办理时间）", "source_status": "SOURCE_EXPLICIT"},
+      "floor": "一楼",
+      "window": "1-3号窗口",
+      "location_detail_status": "CONFIRMED"
+    },
+    {
+      "location_id": "loc-dinglan",
+      "evidence": {"source_id": "src-idcard-rc-lt5y", "source_section": "受理地点", "source_excerpt": "受理地点：杭州市公安局上城区分局丁兰派出所（杭州市上城区丁兰街道环丁路1447号）"},
+      "name": "丁兰派出所",
+      "name_status": "SOURCE_EXPLICIT",
+      "address": "杭州市上城区丁兰街道环丁路1447号一楼政务服务大厅1-3号窗口",
+      "address_status": "SOURCE_EXPLICIT",
+      "service_hours": {"raw_text": "周一至周六夏季：上午8:30-11:30，下午14:00-17:00；春秋冬季：上午8:30-11:30，下午13:30-17:00（法定节假日按国家假期安排调整办理时间）", "source_status": "SOURCE_EXPLICIT"},
+      "floor": "一楼",
+      "window": "1-3号窗口",
+      "location_detail_status": "CONFIRMED"
+    },
+    {
+      "location_id": "loc-jiubao",
+      "evidence": {"source_id": "src-idcard-rc-lt5y", "source_section": "受理地点", "source_excerpt": "受理地点：杭州市公安局上城区分局九堡派出所（杭州市上城区九堡街道九沙大道209号）"},
+      "name": "九堡派出所",
+      "name_status": "SOURCE_EXPLICIT",
+      "address": "杭州市上城区九堡街道九沙大道209号一楼政务服务大厅1-3号窗口",
+      "address_status": "SOURCE_EXPLICIT",
+      "service_hours": {"raw_text": "周一至周六夏季：上午8:30-11:30，下午14:00-17:00；春秋冬季：上午8:30-11:30，下午13:30-17:00（法定节假日按国家假期安排调整办理时间）", "source_status": "SOURCE_EXPLICIT"},
+      "floor": "一楼",
+      "window": "1-3号窗口",
+      "location_detail_status": "CONFIRMED"
+    }
+  ],
+  "channels": [
+    {
+      "channel_id": "ch-online-net",
+      "evidence": {
+        "source_id": "src-idcard-rc-lt5y",
+        "source_section": "常见问题",
+        "source_excerpt": "全程网办，无需到现场"
+      },
+      "source_name": "全程网办（领证未满五年丢失、损坏补领）",
+      "source_status": "SOURCE_EXPLICIT",
+      "channel_type": "ONLINE",
+      "channel_type_status": "SYSTEM_DERIVED",
+      "channel_type_rule": "channel_type_v1",
+      "channel_purpose": "APPLICATION",
+      "channel_purpose_status": "SYSTEM_DERIVED",
+      "channel_purpose_rule": "channel_purpose_v1",
+      "channel_purpose_source_text": "全程网办"
+    }
+  ],
+  "legal_basis": [
+    {
+      "legal_basis_id": "legal-idcard-law-11",
+      "evidence": {
+        "source_id": "src-idcard-rc-lt5y",
+        "source_section": "国家法律依据",
+        "source_excerpt": null
+      },
+      "law_name": "中华人民共和国居民身份证法（2011修正）",
+      "law_name_status": "SOURCE_EXPLICIT",
+      "article": "第十一条",
+      "article_status": "SOURCE_EXPLICIT",
+      "text_excerpt": "居民身份证丢失的，应当申请补领。"
+    },
+    {
+      "legal_basis_id": "legal-idcard-law-12",
+      "evidence": {
+        "source_id": "src-idcard-rc-lt5y",
+        "source_section": "国家法律依据",
+        "source_excerpt": null
+      },
+      "law_name": "中华人民共和国居民身份证法（2011修正）",
+      "law_name_status": "SOURCE_EXPLICIT",
+      "article": "第十二条",
+      "article_status": "SOURCE_EXPLICIT",
+      "text_excerpt": "公安机关应当自公民提交《居民身份证申领登记表》之日起六十日内发放居民身份证"
+    },
+    {
+      "legal_basis_id": "legal-idcard-law-21",
+      "evidence": {
+        "source_id": "src-idcard-rc-lt5y",
+        "source_section": "国家法律依据",
+        "source_excerpt": null
+      },
+      "law_name": "中华人民共和国居民身份证法（2011修正）",
+      "law_name_status": "SOURCE_EXPLICIT",
+      "article": "第二十一条",
+      "article_status": "SOURCE_EXPLICIT",
+      "text_excerpt": "公民申请领取、换领、补领居民身份证，应当缴纳证件工本费。"
+    }
+  ],
+  "conditions": [
+    {
+      "condition_id": "cond-handling-lost",
+      "role": "PROCESS_BRANCH",
+      "evidence": {
+        "source_id": "src-idcard-rc-lt5y",
+        "source_section": "申报条件",
+        "source_excerpt": "证件丢失、损坏需补领的"
+      },
+      "source_text": "证件丢失需补领",
+      "source_status": "SOURCE_EXPLICIT",
+      "field": "handling_case",
+      "normalized_values": ["lost_reissue"],
+      "normalized_status": "SYSTEM_DERIVED",
+      "normalization_rule": "idcard_handling_case_v1",
+      "derivation_note": "收费栏目对应表述为“丢失补领”；办理情形原文将丢失与损坏并列。",
+      "executable": null
+    },
+    {
+      "condition_id": "cond-handling-damaged",
+      "role": "PROCESS_BRANCH",
+      "evidence": {
+        "source_id": "src-idcard-rc-lt5y",
+        "source_section": "收费依据及标准",
+        "source_excerpt": "居民身份证丢失补领、损坏换领"
+      },
+      "source_text": "证件损坏换领",
+      "source_status": "SOURCE_EXPLICIT",
+      "field": "handling_case",
+      "normalized_values": ["damaged_replace"],
+      "normalized_status": "SYSTEM_DERIVED",
+      "normalization_rule": "idcard_handling_case_v1",
+      "derivation_note": "收费栏目写明损坏换领；申报条件办理情形写“丢失、损坏需补领”，损坏路径命名以收费栏目为准。",
+      "executable": null
+    },
+    {
+      "condition_id": "cond-biometric-lt5y",
+      "role": "ELIGIBILITY",
+      "evidence": {
+        "source_id": "src-idcard-rc-lt5y",
+        "source_section": "申报条件",
+        "source_excerpt": "证件的相片、指纹信息采集时间未满5年，且信息有效的"
+      },
+      "source_text": "证件的相片、指纹信息采集时间未满5年，且信息有效的",
+      "source_status": "SOURCE_EXPLICIT",
+      "field": "biometric_info_status",
+      "normalized_values": ["within_5y_valid"],
+      "normalized_status": "SYSTEM_DERIVED",
+      "normalization_rule": "idcard_biometric_v1",
+      "derivation_note": "与事项名称“领证未满五年”对应；表格行间逻辑按全部满足解释，见 TO_CONFIRM 说明。",
+      "executable": null
+    },
+    {
+      "condition_id": "cond-validity-ge10",
+      "role": "ELIGIBILITY",
+      "evidence": {
+        "source_id": "src-idcard-rc-lt5y",
+        "source_section": "申报条件",
+        "source_excerpt": "证件有效期为10年及以上的"
+      },
+      "source_text": "证件有效期为10年及以上的",
+      "source_status": "SOURCE_EXPLICIT",
+      "field": "id_validity_band",
+      "normalized_values": ["ge_10_years"],
+      "normalized_status": "SYSTEM_DERIVED",
+      "normalization_rule": "idcard_validity_v1",
+      "derivation_note": null,
+      "executable": null
+    },
+    {
+      "condition_id": "cond-hukou-zj",
+      "role": "ELIGIBILITY",
+      "evidence": {
+        "source_id": "src-idcard-rc-lt5y",
+        "source_section": "申报条件",
+        "source_excerpt": "户口登记在浙江省"
+      },
+      "source_text": "户口登记在浙江省",
+      "source_status": "SOURCE_EXPLICIT",
+      "field": "hukou_region",
+      "normalized_values": ["zhejiang"],
+      "normalized_status": "SYSTEM_DERIVED",
+      "normalization_rule": "idcard_hukou_v1",
+      "derivation_note": null,
+      "executable": null
+    },
+    {
+      "condition_id": "cond-offline-photo-not-self",
+      "role": "PROCESS_BRANCH",
+      "evidence": {
+        "source_id": "src-idcard-rc-lt5y",
+        "source_section": "特别提示",
+        "source_excerpt": "提交的现场照片非申请人本人"
+      },
+      "source_text": "提交的现场照片非申请人本人，应当通过线下窗口申请办理",
+      "source_status": "SOURCE_EXPLICIT",
+      "field": "submitted_photo_not_self",
+      "normalized_values": ["yes"],
+      "normalized_status": "SYSTEM_DERIVED",
+      "normalization_rule": "idcard_photo_not_self_v1",
+      "derivation_note": "指南条款（二）前半：照片非本人。与相貌变化为 OR；现场拍摄材料要求不等于本例外。",
+      "executable": null
+    },
+    {
+      "condition_id": "cond-offline-appearance",
+      "role": "PROCESS_BRANCH",
+      "evidence": {
+        "source_id": "src-idcard-rc-lt5y",
+        "source_section": "特别提示",
+        "source_excerpt": "相貌特征发生较大变化的"
+      },
+      "source_text": "相貌特征发生较大变化的，应当通过线下窗口申请办理",
+      "source_status": "SOURCE_EXPLICIT",
+      "field": "appearance_change_major",
+      "normalized_values": ["yes"],
+      "normalized_status": "SYSTEM_DERIVED",
+      "normalization_rule": "idcard_appearance_v1",
+      "derivation_note": "指南条款（二）后半：相貌较大变化。与照片非本人为 OR。",
+      "executable": null
+    },
+    {
+      "condition_id": "cond-offline-credit",
+      "role": "PROCESS_BRANCH",
+      "evidence": {
+        "source_id": "src-idcard-rc-lt5y",
+        "source_section": "特别提示",
+        "source_excerpt": "有不良信用记录的"
+      },
+      "source_text": "有不良信用记录的，应当通过线下窗口申请办理",
+      "source_status": "SOURCE_EXPLICIT",
+      "field": "bad_credit_record",
+      "normalized_values": ["yes"],
+      "normalized_status": "SYSTEM_DERIVED",
+      "normalization_rule": "idcard_credit_v1",
+      "derivation_note": "禁止性要求指向线下分流，不是拒绝办理本事项。",
+      "executable": null
+    },
+    {
+      "condition_id": "cond-condition-group-and",
+      "role": "ELIGIBILITY",
+      "evidence": {
+        "source_id": "src-idcard-owner-confirm-f16-2",
+        "source_section": "Owner业务规则确认",
+        "source_excerpt": "申报条件之间为 AND 关系"
+      },
+      "source_text": "Owner确认：本事项申报条件之间为 AND 关系。本条为人工确认，不是办事指南原文摘录。",
+      "source_status": "VERIFIED",
+      "field": "condition_group_operator",
+      "normalized_values": ["AND"],
+      "normalized_status": "VERIFIED",
+      "normalization_rule": null,
+      "derivation_note": "Owner 2026-10-27 确认；Decision Graph 资格边保持全部满足（AND）；不得冒充指南原文。",
+      "executable": null
+    }
+  ]
+}

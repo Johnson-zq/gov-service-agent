@@ -73,7 +73,10 @@ def render_matter_unclear() -> str:
 
 
 def render_uncertain_guide() -> str:
-    return "我还不能确定您想了解哪一部分。您可以直接说材料补正、缴费方式，或银行扣缴协议。"
+    return (
+        "我还不能确定您想了解哪一部分。"
+        "您可以直接问费用、材料、办结时限、办理地点，或说明要办理的具体情形。"
+    )
 
 
 def render_clarification(labels: tuple[str, ...]) -> str:
@@ -134,26 +137,32 @@ def _natural_sentence(fact: KnowledgeFact) -> str:
     text = fact.text.strip()
     topic = fact.topic
     if fact.subtopic == "material_correction":
-        return (
-            "材料不齐全或不符合法定形式时，受理环节会制作《税务事项通知书》（补正通知），"
-            "一次性告知需补正的内容。"
-        )
+        if "税务事项通知书" in text:
+            return (
+                "材料不齐全或不符合法定形式时，受理环节会制作《税务事项通知书》（补正通知），"
+                "一次性告知需补正的内容。"
+            )
+        return text
     if fact.subtopic == "out_of_scope":
-        return (
-            "依法不属于本机关职权或本业务受理范围的，会制作《税务事项通知书》（不予受理通知），"
-            "并告知不予受理的原因。"
-        )
+        if "税务事项通知书" in text:
+            return (
+                "依法不属于本机关职权或本业务受理范围的，会制作《税务事项通知书》（不予受理通知），"
+                "并告知不予受理的原因。"
+            )
+        return text
     if fact.subtopic == "bank_withholding":
         return _bank_agreement_sentence(text)
     if topic == "materials" and "未记载" not in text:
         material = text.split("：", 1)[-1].strip("。")
         if material:
             return f"办理这项业务需要准备{material}。"
-    if topic == "completion_time" and "即办" in text:
-        caveat = ""
-        if "补正" in text:
-            caveat = "如果材料需要补正，或审核不通过需要退回，仍要按照指南记载的流程处理。"
-        return f"根据办事指南，这项业务的承诺办结时限为“即办”。{caveat}"
+    if topic == "completion_time":
+        if "承诺办结期限：即办" in text or re.search(r"承诺办结期限[：:]\s*即办", text):
+            caveat = ""
+            if "补正" in text:
+                caveat = "如果材料需要补正，或审核不通过需要退回，仍要按照指南记载的流程处理。"
+            return f"根据办事指南，这项业务的承诺办结时限为“即办”。{caveat}"
+        return text
     if topic == "consultation":
         phone = _phone_in(text)
         if phone is not None:
@@ -172,6 +181,8 @@ def _natural_sentence(fact: KnowledgeFact) -> str:
             "也可以使用指南记载的其他缴费渠道。"
         )
     if topic == "fees":
+        if re.search(r"\d+\s*元", text):
+            return text
         return (
             "办事指南列出了收费栏目，但没有记载具体收费项目、收费标准或减免说明，"
             "因此不能判断这项业务是否收费。"

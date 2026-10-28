@@ -19,9 +19,11 @@ from sqlalchemy.engine.url import make_url
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DEMO_PATH = _REPO_ROOT / "data" / "demo" / "demo_ss_001.json"
+_IDCARD_PATH = _REPO_ROOT / "data" / "demo" / "idcard_rc_lt5y.json"
 _POLICY_PATH = _REPO_ROOT / "data" / "retrieval" / "f06_online_eligibility.json"
 _REQUIRED_TEST_DATABASE = "gov_service_agent_test"
 _GOLDEN_QUERY = "我辞职了，现在没单位，想自己交社保"
+_IDCARD_QUERY = "我的身份证丢了，想在网上补办。"
 
 
 def _require_opt_in() -> None:
@@ -139,8 +141,11 @@ def test_real_golden_demo_ss_001_recall() -> None:
     engine = create_engine(test_url)
     try:
         store = ProjectionStore(engine)
+        # Policy ALLOW list includes IDCARD; rebuild must load both snapshots.
         rebuild_projection(
-            repository=JsonBusinessRepository.from_paths([_DEMO_PATH]),
+            repository=JsonBusinessRepository.from_paths(
+                [_DEMO_PATH, _IDCARD_PATH]
+            ),
             store=store,
             provider=provider,
             policy_path=_POLICY_PATH,
@@ -164,6 +169,10 @@ def test_real_golden_demo_ss_001_recall() -> None:
         assert result.candidates[0].business_id == "DEMO_SS_001"
         assert result.candidates[0].rank == 1
         assert result.candidates[0].score >= 0.50
+        idcard = service.retrieve(_IDCARD_QUERY)
+        assert idcard.status == RetrievalStatus.CANDIDATES
+        assert idcard.candidates[0].business_id == "IDCARD_RC_LT5Y"
+        assert idcard.candidates[0].score >= 0.50
         dumped = result.model_dump()
         assert "final_business_id" not in dumped
         assert "confirmed_business_id" not in dumped

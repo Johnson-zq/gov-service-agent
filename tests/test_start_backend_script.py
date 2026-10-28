@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 
 _SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "start_backend.ps1"
+_VITE = Path(__file__).resolve().parents[1] / "frontend" / "vite.config.ts"
 
 
 def test_start_backend_script_parses() -> None:
@@ -26,4 +27,15 @@ def test_start_backend_script_parses() -> None:
     assert "Read-Host -AsSecureString" in text
     assert "Remove-Item Env:LLM_API_KEY" in text
     assert "uvicorn gov_service_agent.main:app" in text
+    assert "[int]$Port = 18000" in text
+    assert "--port $Port" in text
     assert "sk-" not in text
+    # Default must avoid Windows reserved range that includes 8000.
+    assert "--port 8000" not in text
+
+
+def test_vite_dev_proxy_targets_backend_18000() -> None:
+    text = _VITE.read_text(encoding="utf-8")
+    assert "http://127.0.0.1:18000" in text
+    assert "GOVAGENT_DEV_BACKEND_URL" in text
+    assert "http://127.0.0.1:8000" not in text

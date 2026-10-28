@@ -1,0 +1,52 @@
+{
+  "schema_version": "1",
+  "business": {
+    "business_id": "TEST_F16_STUB",
+    "canonical_name": "F16测试夹具事项（非正式政务事实）",
+    "category": "test_fixture",
+    "data_scope": "DEMO",
+    "data_version": 1,
+    "status": "ACTIVE",
+    "primary_source_id": "src-f16-stub",
+    "updated_at": "2026-10-27T00:00:00+08:00",
+    "service_target": "个人",
+    "implementing_authority": "测试夹具",
+    "on_site_visits": "0次",
+    "quantity_limit": "无数量限制",
+    "prohibition": "无禁止性要求",
+    "metadata_source_id": "src-f16-stub",
+    "metadata_source_status": "SOURCE_EXPLICIT"
+  },
+  "sources": [
+    {
+      "source_id": "src-f16-stub",
+      "source_title": "F16测试夹具事项（非正式政务事实）",
+      "source_type": "OFFICIAL_GUIDE",
+      "source_file": "TEST_F16_STUB.txt",
+      "source_section": null,
+      "effective_date": null,
+      "source_version": null,
+      "ingested_at": null,
+      "ingested_by": null
+    }
+  ],
+  "materials": [
+    {
+      "material_id": "mat-stub-card",
+      "evidence": {
+        "source_id": "src-f16-stub",
+        "source_section": "申请材料",
+        "source_excerpt": null
+      },
+      "source_text": "测试夹具材料A",
+      "source_status": "SOURCE_EXPLICIT",
+      "requirement_level": "REQUIRED",
+      "requirement_level_status": "SYSTEM_DERIVED",
+      "derivation_note": "fixture only"
+    }
+  ],
+  "handling_locations": [],
+  "channels": [],
+  "legal_basis": [],
+  "conditions": []
+}
