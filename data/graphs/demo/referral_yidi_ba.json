@@ -1,0 +1,42 @@
+{
+  "schema_version": "1",
+  "graph_id": "referral_yidi_ba",
+  "graph_version": 1,
+  "data_scope": "DEMO",
+  "entry_node_id": "entry",
+  "nodes": [
+    {
+      "node_id": "entry",
+      "node_type": "ENTRY",
+      "design_basis": "SYSTEM_DESIGNED",
+      "slot_name": null,
+      "allowed_values": null,
+      "question_text": null,
+      "candidate_business_id": null,
+      "unsupported_reason": null,
+      "source_condition_refs": null
+    },
+    {
+      "node_id": "terminal_referral_yidi_ba",
+      "node_type": "TERMINAL_CANDIDATE",
+      "design_basis": "SYSTEM_DESIGNED",
+      "slot_name": null,
+      "allowed_values": null,
+      "question_text": null,
+      "candidate_business_id": "REFERRAL_YIDI_BA",
+      "unsupported_reason": null,
+      "source_condition_refs": null
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "e-entry-terminal",
+      "from_node_id": "entry",
+      "to_node_id": "terminal_referral_yidi_ba",
+      "edge_kind": "ENTRY_FORWARD",
+      "design_basis": "SYSTEM_DESIGNED",
+      "match": null,
+      "source_condition_refs": null
+    }
+  ]
+}

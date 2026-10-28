@@ -11,6 +11,11 @@
       "business_id": "IDCARD_RC_LT5Y",
       "decision": "ALLOW",
       "reason": "f16_idcard_replace_lt5y_online_scope"
+    },
+    {
+      "business_id": "REFERRAL_YIDI_BA",
+      "decision": "ALLOW",
+      "reason": "f16_referral_yidi_ba_online_scope"
     }
   ]
 }

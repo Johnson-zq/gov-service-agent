@@ -20,6 +20,7 @@ from sqlalchemy.engine.url import make_url
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DEMO_PATH = _REPO_ROOT / "data" / "demo" / "demo_ss_001.json"
 _IDCARD_PATH = _REPO_ROOT / "data" / "demo" / "idcard_rc_lt5y.json"
+_REFERRAL_PATH = _REPO_ROOT / "data" / "demo" / "referral_yidi_ba.json"
 _POLICY_PATH = _REPO_ROOT / "data" / "retrieval" / "f06_online_eligibility.json"
 _REQUIRED_TEST_DATABASE = "gov_service_agent_test"
 _GOLDEN_QUERY = "我辞职了，现在没单位，想自己交社保"
@@ -141,10 +142,10 @@ def test_real_golden_demo_ss_001_recall() -> None:
     engine = create_engine(test_url)
     try:
         store = ProjectionStore(engine)
-        # Policy ALLOW list includes IDCARD; rebuild must load both snapshots.
+        # Policy ALLOW list includes IDCARD + REFERRAL; rebuild must load all.
         rebuild_projection(
             repository=JsonBusinessRepository.from_paths(
-                [_DEMO_PATH, _IDCARD_PATH]
+                [_DEMO_PATH, _IDCARD_PATH, _REFERRAL_PATH]
             ),
             store=store,
             provider=provider,

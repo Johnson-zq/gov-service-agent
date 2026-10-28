@@ -28,6 +28,7 @@ _REGISTRY = _REPO_ROOT / "data" / "matters" / "registry.json"
 _POLICY = _REPO_ROOT / "data" / "retrieval" / "f06_online_eligibility.json"
 _ID = "IDCARD_RC_LT5Y"
 _SS = "DEMO_SS_001"
+_REF = "REFERRAL_YIDI_BA"
 _MIN_SCORE = 0.50
 
 _QUERIES: tuple[tuple[str, str], ...] = (
@@ -35,6 +36,8 @@ _QUERIES: tuple[tuple[str, str], ...] = (
     ("我的身份证损坏了，而且现在相貌变化比较大，可以网上补办吗？", _ID),
     ("补办身份证需要多少钱？", _ID),
     ("我辞职了，没有单位，想自己交社保。", _SS),
+    ("我想办理异地转诊人员备案。", _REF),
+    ("异地转诊备案需要什么材料？", _REF),
 )
 
 
@@ -60,12 +63,12 @@ def _dot(a: list[float], b: list[float]) -> float:
 def test_real_local_embedding_ranks_idcard_and_ss() -> None:
     settings = _require_opt_in()
     registry = load_matter_registry(_REGISTRY, repo_root=_REPO_ROOT)
-    assert registry.has(_ID) and registry.has(_SS)
+    assert registry.has(_ID) and registry.has(_SS) and registry.has(_REF)
     repo = JsonBusinessRepository.from_paths(registry.business_data_paths())
     policy = load_admission_policy(_POLICY)
     drafts = draft_online_documents(repo, policy)
     by_id = {d.business_id: d for d in drafts}
-    assert set(by_id) == {_ID, _SS}
+    assert set(by_id) == {_ID, _SS, _REF}
 
     provider = LocalSentenceTransformerProvider(
         model_id=settings.embedding_model_id,  # type: ignore[arg-type]

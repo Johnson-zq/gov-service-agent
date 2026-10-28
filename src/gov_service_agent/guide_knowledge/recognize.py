@@ -94,6 +94,8 @@ _FOREIGN_TOPICS = ("医保", "公积金", "户口", "护照", "不动产")
 _DEMO_SS_FOREIGN_EXCLUSIONS: frozenset[str] = frozenset()
 # Hukou is an eligibility topic for the ID-card matter, not an out-of-guide domain.
 _IDCARD_FOREIGN_EXCLUSIONS: frozenset[str] = frozenset({"户口"})
+# Medical-insurance wording is in-scope for the remote-referral filing matter.
+_REFERRAL_FOREIGN_EXCLUSIONS: frozenset[str] = frozenset({"医保"})
 _GUIDE_HINTS = (
     "材料",
     "资料",
@@ -107,11 +109,14 @@ _GUIDE_HINTS = (
     "身份证",
     "补领",
     "换领",
+    "转诊",
+    "备案",
 )
 _HOW_MARKERS = ("怎么", "如何", "怎样")
 _CHANNEL_WORDS = ("支付宝", "微信", "小程序")
 _DEMO_SS_BUSINESS_ID = "DEMO_SS_001"
 _IDCARD_BUSINESS_ID = "IDCARD_RC_LT5Y"
+_REFERRAL_BUSINESS_ID = "REFERRAL_YIDI_BA"
 _SMALLTALK_PHRASES = (
     "笑话",
     "你好",
@@ -143,8 +148,13 @@ _TOPIC_RULES: tuple[tuple[tuple[str, ...], str, str | None], ...] = (
     (("特别提示", "注意事项", "禁止性"), "special_notice", None),
     (("流程图",), "flow_chart", None),
     (("办理流程", "流程"), "process", None),
+    (
+        ("哪些经办机构", "哪些机构可以办理", "经办机构可以办理", "哪里可以备案"),
+        "faq",
+        "agencies",
+    ),
     (("常见问题",), "faq", None),
-    (("缴费渠道", "办税服务厅", "自助办税"), "channels", None),
+    (("缴费渠道", "办税服务厅", "自助办税", "浙里办", "浙江政务服务网"), "channels", None),
     (("实施主体", "哪个部门", "哪个局"), "implementing_authority", None),
     (("适用范围", "申报条件", "申请条件", "谁可以"), "applicant_scope", None),
     (("办结结果",), "result", None),
@@ -203,6 +213,8 @@ def recognize_guide_utterance(
         excluded |= _DEMO_SS_FOREIGN_EXCLUSIONS
     if active_business_id == _IDCARD_BUSINESS_ID:
         excluded |= _IDCARD_FOREIGN_EXCLUSIONS
+    if active_business_id == _REFERRAL_BUSINESS_ID:
+        excluded |= _REFERRAL_FOREIGN_EXCLUSIONS
     if any(topic in text and topic not in excluded for topic in _FOREIGN_TOPICS):
         return Recognition(RecognitionKind.OUT_OF_GUIDE)
     asks_question = any(marker in text for marker in _QUESTION_MARKERS)

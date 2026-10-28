@@ -58,11 +58,13 @@ _DEMO_BUSINESS = _REPO_ROOT / "data" / "demo" / "demo_ss_001.json"
 _DEMO_GUIDE = _REPO_ROOT / "data" / "guides" / "DEMO_SS_001.guide.json"
 _ID_GRAPH = _REPO_ROOT / "data" / "graphs" / "demo" / "idcard_replace_lt5y.json"
 _ID_BUSINESS = _REPO_ROOT / "data" / "demo" / "idcard_rc_lt5y.json"
+_REF_BUSINESS = _REPO_ROOT / "data" / "demo" / "referral_yidi_ba.json"
 _ID_GUIDE = _REPO_ROOT / "data" / "guides" / "IDCARD_RC_LT5Y.guide.json"
 _REGISTRY = _REPO_ROOT / "data" / "matters" / "registry.json"
 _POLICY = _REPO_ROOT / "data" / "retrieval" / "f06_online_eligibility.json"
 _ID = "IDCARD_RC_LT5Y"
 _SS = "DEMO_SS_001"
+_REF = "REFERRAL_YIDI_BA"
 
 
 class ScriptedMapper:
@@ -142,7 +144,9 @@ def _registry() -> MatterRegistry:
 
 
 def _repo() -> JsonBusinessRepository:
-    return JsonBusinessRepository.from_paths([_DEMO_BUSINESS, _ID_BUSINESS])
+    return JsonBusinessRepository.from_paths(
+        [_DEMO_BUSINESS, _ID_BUSINESS, _REF_BUSINESS]
+    )
 
 
 def _processor(
@@ -222,10 +226,12 @@ def test_registry_and_admission_include_idcard() -> None:
     assert registry.has(_ID)
     assert registry.require_graph(_ID).graph_id == "idcard_replace_lt5y"
     policy = load_admission_policy(_POLICY)
-    assert policy.allow_ids() == frozenset({_SS, _ID})
+    assert _ID in policy.allow_ids() and _SS in policy.allow_ids()
     drafts = draft_online_documents(_repo(), policy)
-    assert [d.business_id for d in drafts] == [_SS, _ID]
-    assert "居民身份证换补领" in drafts[1].retrieval_text
+    assert _ID in {d.business_id for d in drafts}
+    assert "居民身份证换补领" in next(
+        d.retrieval_text for d in drafts if d.business_id == _ID
+    )
 
 
 def test_idcard_and_ss_guides_are_isolated() -> None:

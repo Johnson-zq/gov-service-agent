@@ -12,6 +12,12 @@
       "business_data_source": "data/demo/idcard_rc_lt5y.json",
       "decision_graph_source": "data/graphs/demo/idcard_replace_lt5y.json",
       "guide_source": "data/guides/IDCARD_RC_LT5Y.guide.json"
+    },
+    {
+      "business_id": "REFERRAL_YIDI_BA",
+      "business_data_source": "data/demo/referral_yidi_ba.json",
+      "decision_graph_source": "data/graphs/demo/referral_yidi_ba.json",
+      "guide_source": "data/guides/REFERRAL_YIDI_BA.guide.json"
     }
   ]
 }

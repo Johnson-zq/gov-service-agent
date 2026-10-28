@@ -35,6 +35,8 @@ from tests.test_embedding import FakeEmbeddingProvider, make_test_vector
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEMO_SS_001_PATH = REPO_ROOT / "data" / "demo" / "demo_ss_001.json"
+IDCARD_PATH = REPO_ROOT / "data" / "demo" / "idcard_rc_lt5y.json"
+REFERRAL_PATH = REPO_ROOT / "data" / "demo" / "referral_yidi_ba.json"
 POLICY_PATH = REPO_ROOT / "data" / "retrieval" / "f06_online_eligibility.json"
 
 
@@ -53,11 +55,19 @@ def _demo_repo() -> JsonBusinessRepository:
     return JsonBusinessRepository.from_paths([DEMO_SS_001_PATH])
 
 
+def _online_repo() -> JsonBusinessRepository:
+    return JsonBusinessRepository.from_paths(
+        [DEMO_SS_001_PATH, IDCARD_PATH, REFERRAL_PATH]
+    )
+
+
 def test_official_policy_loads() -> None:
     policy = load_admission_policy(POLICY_PATH)
     assert policy.schema_version == 1
     assert policy.policy_version == POLICY_VERSION
-    assert policy.allow_ids() == frozenset({"DEMO_SS_001", "IDCARD_RC_LT5Y"})
+    assert {"DEMO_SS_001", "IDCARD_RC_LT5Y", "REFERRAL_YIDI_BA"}.issubset(
+        policy.allow_ids()
+    )
 
 
 def test_policy_does_not_auto_admit_by_prefix() -> None:
@@ -65,10 +75,13 @@ def test_policy_does_not_auto_admit_by_prefix() -> None:
     policy = load_admission_policy(POLICY_PATH)
     assert "DEMO_SS_002" not in policy.allow_ids()
     assert "DEMO_INV" not in policy.allow_ids()
-    idcard_path = REPO_ROOT / "data" / "demo" / "idcard_rc_lt5y.json"
-    repo = JsonBusinessRepository.from_paths([DEMO_SS_001_PATH, idcard_path])
+    repo = _online_repo()
     drafts = draft_online_documents(repo, policy)
-    assert [d.business_id for d in drafts] == ["DEMO_SS_001", "IDCARD_RC_LT5Y"]
+    assert {d.business_id for d in drafts} == {
+        "DEMO_SS_001",
+        "IDCARD_RC_LT5Y",
+        "REFERRAL_YIDI_BA",
+    }
 
 
 @pytest.mark.parametrize(
@@ -244,8 +257,7 @@ def test_builder_embed_shape_mismatch_no_replace() -> None:
     provider = FakeEmbeddingProvider(
         vectors_by_text={},
     )
-    idcard_path = REPO_ROOT / "data" / "demo" / "idcard_rc_lt5y.json"
-    repo = JsonBusinessRepository.from_paths([DEMO_SS_001_PATH, idcard_path])
+    repo = _online_repo()
 
     def _bad_embed(texts):  # type: ignore[no-untyped-def]
         return [[0.0] * 10 for _ in texts]
@@ -263,8 +275,7 @@ def test_builder_embed_shape_mismatch_no_replace() -> None:
 
 
 def test_builder_success_and_replace_failure() -> None:
-    idcard_path = REPO_ROOT / "data" / "demo" / "idcard_rc_lt5y.json"
-    repo = JsonBusinessRepository.from_paths([DEMO_SS_001_PATH, idcard_path])
+    repo = _online_repo()
     policy = load_admission_policy(POLICY_PATH)
     drafts = draft_online_documents(repo, policy)
     vectors_by_text = {
@@ -284,7 +295,7 @@ def test_builder_success_and_replace_failure() -> None:
     )
     assert key
     assert len(store.replace_calls) == 1
-    assert len(store.replace_calls[0]["documents"]) == 2
+    assert len(store.replace_calls[0]["documents"]) == 3
 
     store2 = RecordingStore(fail_replace=True)
     with pytest.raises(ProjectionRebuildError, match="replace"):

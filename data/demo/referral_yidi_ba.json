@@ -1,0 +1,120 @@
+{
+  "schema_version": "1",
+  "business": {
+    "business_id": "REFERRAL_YIDI_BA",
+    "canonical_name": "异地转诊人员备案",
+    "category": "medical_referral",
+    "data_scope": "DEMO",
+    "data_version": 1,
+    "status": "ACTIVE",
+    "primary_source_id": "src-referral-yidi-ba",
+    "updated_at": "2026-10-28T14:00:00+08:00",
+    "service_target": "个人",
+    "implementing_authority": "区人力资源和社会保障局",
+    "on_site_visits": "0次",
+    "quantity_limit": "无数量限制",
+    "prohibition": "无禁止性要求",
+    "metadata_source_id": "src-referral-yidi-ba",
+    "metadata_source_status": "SOURCE_EXPLICIT"
+  },
+  "sources": [
+    {
+      "source_id": "src-referral-yidi-ba",
+      "source_title": "异地转诊人员备案",
+      "source_type": "OFFICIAL_GUIDE",
+      "source_file": "异地转诊人员备案.txt",
+      "source_section": null,
+      "effective_date": null,
+      "source_version": null,
+      "ingested_at": null,
+      "ingested_by": null
+    }
+  ],
+  "materials": [
+    {
+      "material_id": "mat-id-or-medical-credential",
+      "evidence": {
+        "source_id": "src-referral-yidi-ba",
+        "source_section": "申请材料",
+        "source_excerpt": "医保电子凭证或有效身份证件或社保卡（委托他人办理的提供双方身份证件原件）"
+      },
+      "source_text": "医保电子凭证或有效身份证件或社保卡（委托他人办理的提供双方身份证件原件）",
+      "source_status": "SOURCE_EXPLICIT",
+      "requirement_level": "REQUIRED",
+      "requirement_level_status": "SOURCE_EXPLICIT",
+      "derivation_note": null
+    },
+    {
+      "material_id": "mat-referral-form",
+      "evidence": {
+        "source_id": "src-referral-yidi-ba",
+        "source_section": "申请材料",
+        "source_excerpt": "《基本医疗保险参保人员异地转诊备案表》（医院盖章）"
+      },
+      "source_text": "《基本医疗保险参保人员异地转诊备案表》（医院盖章）",
+      "source_status": "SOURCE_EXPLICIT",
+      "requirement_level": "REQUIRED",
+      "requirement_level_status": "SOURCE_EXPLICIT",
+      "derivation_note": null
+    }
+  ],
+  "handling_locations": [
+    {
+      "location_id": "loc-shangcheng-medical",
+      "evidence": {
+        "source_id": "src-referral-yidi-ba",
+        "source_section": "受理地点和时间",
+        "source_excerpt": "受理地点：杭州市上城区政务服务中心（杭州市上城区四季青街道塘潮街6号）一楼12-16号医保综合窗口"
+      },
+      "name": "上城区政务服务中心医保综合窗口",
+      "name_status": "SOURCE_EXPLICIT",
+      "address": "杭州市上城区四季青街道塘潮街6号一楼12-16号医保综合窗口",
+      "address_status": "SOURCE_EXPLICIT",
+      "service_hours": {
+        "raw_text": "周一至周日（法定节假日外）上午9:00-12:00，下午1:30-5:00",
+        "source_status": "SOURCE_EXPLICIT"
+      },
+      "floor": "一楼",
+      "window": "12-16号医保综合窗口",
+      "location_detail_status": "CONFIRMED"
+    }
+  ],
+  "channels": [
+    {
+      "channel_id": "ch-zhejiang-gov",
+      "evidence": {
+        "source_id": "src-referral-yidi-ba",
+        "source_section": "常见问题",
+        "source_excerpt": "或登录浙江政务服务网、浙里办APP申请"
+      },
+      "source_name": "浙江政务服务网",
+      "source_status": "SOURCE_EXPLICIT",
+      "channel_type": "ONLINE",
+      "channel_type_status": "SYSTEM_DERIVED",
+      "channel_type_rule": "channel_type_v1",
+      "channel_purpose": "APPLICATION",
+      "channel_purpose_status": "SYSTEM_DERIVED",
+      "channel_purpose_rule": "channel_purpose_v1",
+      "channel_purpose_source_text": "或登录浙江政务服务网、浙里办APP申请"
+    },
+    {
+      "channel_id": "ch-zheliban",
+      "evidence": {
+        "source_id": "src-referral-yidi-ba",
+        "source_section": "常见问题",
+        "source_excerpt": "或登录浙江政务服务网、浙里办APP申请"
+      },
+      "source_name": "浙里办APP",
+      "source_status": "SOURCE_EXPLICIT",
+      "channel_type": "ONLINE",
+      "channel_type_status": "SYSTEM_DERIVED",
+      "channel_type_rule": "channel_type_v1",
+      "channel_purpose": "APPLICATION",
+      "channel_purpose_status": "SYSTEM_DERIVED",
+      "channel_purpose_rule": "channel_purpose_v1",
+      "channel_purpose_source_text": "或登录浙江政务服务网、浙里办APP申请"
+    }
+  ],
+  "legal_basis": [],
+  "conditions": []
+}

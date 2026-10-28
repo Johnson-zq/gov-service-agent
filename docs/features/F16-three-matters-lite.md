@@ -7,8 +7,8 @@
 ## 范围
 
 - **F16-1**：多图注册表、会话绑图、Guide 多文档、识别/首轮槽位隔离。
-- **F16-2（当前）**：居民身份证换补领（领证未满五年）。
-- **F16-3**：异地转诊人员备案。
+- **F16-2**：居民身份证换补领（领证未满五年）。
+- **F16-3（当前）**：异地转诊人员备案。
 - **F16-4**：住房公积金租赁提取(公租房)按月转账业务。
 
 ## 核心设计决策
@@ -23,7 +23,24 @@
 
 ## 当前阶段
 
-F16-2 身份证事项已接入。
+F16-3 异地转诊人员备案已接入（申报条件「无」→ 浅图 + F10 显式确认）。
+
+## 异地转诊接入（F16-3）
+
+- **business_id**：`REFERRAL_YIDI_BA`
+- **Business Data**：`data/demo/referral_yidi_ba.json`
+- **Decision Graph**：`data/graphs/demo/referral_yidi_ba.json`（`entry → TERMINAL`，无资格槽位）
+- **Guide**：`data/guides/REFERRAL_YIDI_BA.guide.json`
+- **原文**：`data/sources/异地转诊人员备案.txt`
+
+| 栏目 | 记载要点 |
+| --- | --- |
+| 申报条件 | **无**（不得编造资格门槛） |
+| 材料 | 医保电子凭证/身份证件/社保卡；《基本医疗保险参保人员异地转诊备案表》（医院盖章） |
+| 时限 | 即办 |
+| 收费 | 栏目未记载具体项目/标准（不得写成免费） |
+| 受理点 | 上城区政务服务中心一楼 12-16 号医保综合窗口 |
+| FAQ | 各城区医保经办机构等；浙江政务服务网 / 浙里办APP（渠道类型 ONLINE，非 MINI_PROGRAM） |
 
 ## 身份证接入（F16-2）
 
@@ -97,6 +114,15 @@ Admission / Registry 增加事项后，**必须重建** PostgreSQL `semantic_ret
 - 重建后文档：`DEMO_SS_001` + `IDCARD_RC_LT5Y`；Owner 四句实测均可 top-1 命中且 score≥0.65。
 - `SemanticRetrievalService` 已缓存 LOCAL Embedding Provider，避免每轮 `embedding_model_loaded`（需重启 Backend 生效）。
 
+### F16-3 测试与投影
+
+| 套件 | 结果 |
+| --- | --- |
+| `tests/test_f16_referral.py` + idcard + foundation + F15 + retrieval builder/service + F12 turn | **145 passed**（Fake LLM） |
+| 本地 pgvector 重建 | `document_count=3`：`DEMO_SS_001` / `IDCARD_RC_LT5Y` / `REFERRAL_YIDI_BA`（gte-base-zh / cpu） |
+
+在线 Backend 若已缓存旧投影元数据，Owner 验收前需**自行重启** Backend（本阶段不代启服务）。
+
 ## 非目标
 
-跨事项切换、付费 LLM 联调、F14 UI、修改已有 DEMO 社保核验事实、放宽 0.80 槽位门槛、F16-3/4 正式数据。
+跨事项切换、付费 LLM 联调、F14 UI、修改已有 DEMO 社保核验事实、放宽 0.80 槽位门槛、F16-4 正式数据。
